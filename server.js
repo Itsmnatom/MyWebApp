@@ -273,7 +273,7 @@ app.get('/api/manga/details', async (req, res) => {
         $('#chapterlist ul li').each((i, el) => {
             const a = $(el).find('.eph-num a').first();
             const href = a.attr('href') || '';
-            if (!href || chSeen.has(href)) return;
+            if (!href || href.startsWith('#') || chSeen.has(href)) return;
 
             const name = a.find('.chapternum').text().trim()
                 || a.text().trim().replace(/\s+/g, ' ');
@@ -327,14 +327,32 @@ app.get('/api/manga/read', async (req, res) => {
     if (cached) return res.json(cached);
 
     try {
+        if (!chapterUrl.startsWith('http')) throw new Error('Invalid chapter URL');
         const html = await fetchHtml(chapterUrl);
         const $ = cheerio.load(html);
 
-        const prevUrl = $('.prev_page, .nav-previous a, .nextprev a[rel="prev"], a.prev_page').attr('href') || null;
-        const nextUrl = $('.next_page, .nav-next a, .nextprev a[rel="next"], a.next_page').attr('href') || null;
-
-        let imageUrls = [];
         const scripts = $('script').map((_, e) => $(e).html()).get().join('\n');
+
+        // Extract Prev/Next from script if possible
+        let prevUrl = null;
+        let nextUrl = null;
+        const mPrev = scripts.match(/"prevUrl"\s*:\s*"([^"]+)"/);
+        const mNext = scripts.match(/"nextUrl"\s*:\s*"([^"]+)"/);
+        
+        if (mPrev) prevUrl = mPrev[1].replace(/\\\//g, '/');
+        if (mNext) nextUrl = mNext[1].replace(/\\\//g, '/');
+
+        // Fallback to DOM if script fails or returns placeholder
+        if (!prevUrl || prevUrl.includes('#')) {
+            prevUrl = $('.prev_page, .nav-previous a, .nextprev a[rel="prev"], a.prev_page, .ch-prev-btn').attr('href') || null;
+        }
+        if (!nextUrl || nextUrl.includes('#')) {
+            nextUrl = $('.next_page, .nav-next a, .nextprev a[rel="next"], a.next_page, .ch-next-btn').attr('href') || null;
+        }
+
+        // Final Filter: No placeholders
+        if (prevUrl && prevUrl.startsWith('#')) prevUrl = null;
+        if (nextUrl && nextUrl.startsWith('#')) nextUrl = null;
 
         // รูปแบบ 1: เก็บใน JSON ของ Theme
         const m1 = scripts.match(/"images"\s*:\s*(\[[^\]]+\])/);
