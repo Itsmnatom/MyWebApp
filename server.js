@@ -191,7 +191,7 @@ async function scrapeHome(page) {
 
     return {
         popular: filterAndSort(popular).slice(0, 14),
-        updates: filterAndSort(updates)
+        updates: filterAndSort(updates).slice(0, 32)
     };
 }
 
