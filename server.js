@@ -72,6 +72,7 @@ async function getGotScraping() {
 async function fetchHtml(url) {
     try {
         const gotScraping = await getGotScraping();
+        console.log('[SpeedManga] Initiating fetch for:', url);
         // Correct call signature: gotScraping(url, options)
         const response = await gotScraping(url, {
             headerGeneratorOptions: {
@@ -79,9 +80,11 @@ async function fetchHtml(url) {
                 devices: ['desktop'],
                 operatingSystems: ['windows']
             },
-            timeout: { request: 10000 }, // Reduced to 10s for speed
+            timeout: { request: 20000 }, // Increased to 20s for slow Render
             retry: { limit: 1 }
         });
+        console.log('[SpeedManga] Fetch response status:', response.statusCode);
+        if (!response.ok) throw new Error(`HTTP ${response.statusCode} [Link Unstable]`);
         return response.body;
     } catch (error) {
         console.error(`[fetchHtml] Failed to fetch ${url}:`, error.message);
@@ -220,12 +223,17 @@ app.get('/api/manga/home', async (req, res) => {
 // ══════════════════════════════════════════════════
 app.get('/api/manga/details', async (req, res) => {
     const url = req.query.url;
+    console.log(`[API] Details requested for: ${url}`);
     if (!url) return res.status(400).json({ error: 'Missing URL' });
 
     const cached = CACHE.details.get(url);
-    if (cached) return res.json(cached);
+    if (cached) {
+        console.log(`[API] Serving from cache: ${url}`);
+        return res.json(cached);
+    }
 
     try {
+        console.log(`[API] Fetching HTML from upstream...`);
         const html = await fetchHtml(url);
         const $ = cheerio.load(html);
 

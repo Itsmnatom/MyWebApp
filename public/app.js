@@ -239,16 +239,18 @@ async function renderDetail(url) {
 
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
 
+        console.log('[SpeedManga] Initiating fetch for:', url);
         const res = await fetch(`${API}/manga/details?url=${encodeURIComponent(url)}`, { signal: controller.signal });
         clearTimeout(timeoutId);
         
+        console.log('[SpeedManga] Fetch response status:', res.status);
         if (!res.ok) throw new Error(`HTTP ${res.status} [Link Unstable]`);
         const d = await res.json();
         if (d.error) throw new Error(d.error);
 
-        console.log('[SpeedManga] Data recovered:', d.title);
+        console.log('[SpeedManga] Data metadata received:', d.title);
 
         document.getElementById('d-title').innerText = d.title || 'Unknown Classified';
         document.getElementById('d-synopsis').innerText = d.synopsis || 'No synopsis data recovered from archives.';
