@@ -93,8 +93,8 @@ async function handleLocation() {
 
     if (path === '/read' && targetUrl) {
         document.getElementById('reader-view').classList.remove('hidden');
-        document.body.style.overflow = 'hidden'; // Lock background scroll
-        document.getElementById('main-header').classList.add('-translate-y-full'); // Hide navbar
+        document.body.style.overflow = 'hidden'; 
+        document.getElementById('main-header').classList.add('-translate-y-full'); 
         await renderReader(targetUrl, targetTitle || 'Reading...');
     } else if (path === '/manga' && targetUrl) {
         const dView = document.getElementById('detail-view');
@@ -105,6 +105,17 @@ async function handleLocation() {
         const hView = document.getElementById('home-view');
         hView.classList.remove('hidden');
         hView.classList.add('animate-fade-in-up');
+        
+        // Instant Load from Cache
+        if (page === 1) {
+            const cachedHome = localStorage.getItem('cache_home_1');
+            if (cachedHome) {
+                try {
+                    const data = JSON.parse(cachedHome);
+                    displayHome(data, 1, true); // display with 'fromCache' flag
+                } catch(e) {}
+            }
+        }
         await renderHome(page);
     }
 }
@@ -114,23 +125,45 @@ async function handleLocation() {
 // ══════════════════════════════════════════════════
 
 async function renderHome(page) {
+    const popSection = document.getElementById('popular-section');
+    const upContainer = document.getElementById('updates-container');
+    
+    // Only show spinner if we don't have cached data showing
+    if (!upContainer.innerHTML || upContainer.innerHTML.includes('skeleton')) {
+        upContainer.innerHTML = spinnerHTML(`Synchronizing Page ${page}...`);
+    }
+
+    try {
+        const res = await fetch(`${API}/manga/home?page=${page}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        // Save to cache for instant load next time (only page 1)
+        if (page === 1 && data.updates?.length > 0) {
+            localStorage.setItem('cache_home_1', JSON.stringify(data));
+        }
+
+        displayHome(data, page);
+    } catch (e) {
+        upContainer.innerHTML = errorHTML(e.message, `renderHome(${page})`);
+        if (page === 1) popSection.style.display = 'none';
+    }
+}
+
+function displayHome(data, page, fromCache = false) {
     const popContainer = document.getElementById('popular-container');
     const upContainer = document.getElementById('updates-container');
     const popSection = document.getElementById('popular-section');
 
     popSection.style.display = page === 1 ? 'block' : 'none';
-    if (page === 1) {
-        popContainer.innerHTML = skeletonCards(6, 'w-40 md:w-56 h-60 md:h-80 flex-none');
-    }
-    upContainer.innerHTML = spinnerHTML(`Synchronizing Page ${page}...`);
-
     document.getElementById('page-indicator').innerText = `PAGE ${page}`;
+    
     const btnPrev = document.getElementById('btn-prev');
     const btnNext = document.getElementById('btn-next');
     
-    if (page <= 1) {
-        btnPrev.classList.add('hidden');
-    } else {
+    if (page <= 1) btnPrev.classList.add('hidden');
+    else {
         btnPrev.classList.remove('hidden');
         btnPrev.onclick = () => navigate(`/?page=${page - 1}`);
     }
@@ -139,86 +172,58 @@ async function renderHome(page) {
     btnNext.disabled = false;
     btnNext.classList.remove('opacity-50', 'pointer-events-none');
 
-    try {
-        const res = await fetch(`${API}/manga/home?page=${page}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
+    const { popular = [], updates = [] } = data;
 
-        const { popular = [], updates = [] } = data;
-
-        // ── Popular (Horizontal Scroll) ─────────────────
-        if (page === 1) {
-            if (popular.length > 0) {
-                popContainer.innerHTML = popular.map((m, i) => `
-                    <div onclick="navigate('/manga?url=${encodeURIComponent(m.url)}')" class="flex-none w-40 md:w-56 group cursor-pointer animate-fade-in-up snap-start" style="animation-delay: ${i * 0.05}s">
-                        <div class="relative overflow-hidden rounded-2xl aspect-[2/3] mb-3 shadow-[0_4px_20px_rgba(0,0,0,0.5)] group-hover:shadow-[0_8px_30px_rgba(255,69,0,0.3)] transition-all duration-500 border border-white/5 group-hover:border-primary/50">
-                            <img src="${proxify(m.image)}"
-                                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out bg-dark-800"
-                                loading="lazy">
-                            <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/20 to-transparent opacity-80 group-hover:opacity-60 transition-opacity duration-300"></div>
-                            
-                            ${getBadgeUI(m.badge)}
-                            
-                            <div class="absolute bottom-3 left-3 right-3 text-center">
-                                <div class="glass inline-block px-3 py-1 rounded-full text-[9px] font-bold text-white mb-2 shadow-lg">
-                                    <i class="fas fa-fire text-primary mr-1"></i> ${clean(m.lastChapter)}
-                                </div>
-                            </div>
-                        </div>
-                        <h3 class="text-xs md:text-sm font-bold font-display line-clamp-2 leading-tight group-hover:text-primary transition-colors text-center px-1">
-                            ${clean(m.title)}
-                        </h3>
-                    </div>`
-                ).join('');
-            } else {
-                popSection.style.display = 'none';
-            }
-        }
-
-        // ── Updates (Grid Layout) ───────────────────────
-        if (updates.length === 0) {
-            upContainer.innerHTML = '<div class="col-span-full py-20 text-center text-gray-500 font-bold uppercase tracking-widest text-sm">No transmissions found</div>';
-            btnNext.disabled = true;
-            btnNext.classList.add('opacity-50', 'pointer-events-none');
-        } else {
-            upContainer.innerHTML = updates.map((m, i) => {
-                const chaptersHTML = (m.chapters || []).map(c => {
-                    const readPath = `/read?url=${encodeURIComponent(c.url)}&title=${encodeURIComponent(`${clean(m.title)} - ${clean(c.name)}`)}`;
-                    return `<div onclick="event.stopPropagation(); navigate('${readPath}')"
-                        class="glass text-[10px] md:text-xs px-3 py-1.5 rounded-lg mt-1.5 hover:bg-primary/20 hover:border-primary/50 border border-white/5 transition-all duration-300 flex justify-between items-center group/btn cursor-pointer">
-                        <span class="font-bold truncate text-gray-300 group-hover/btn:text-white">${clean(c.name)}</span>
-                        <div class="flex items-center gap-2 flex-shrink-0">
-                            <span class="text-[8px] md:text-[9px] text-gray-500 group-hover/btn:text-primary transition-colors uppercase font-bold tracking-wider">${clean(c.time)}</span>
-                            <i class="fas fa-play text-[8px] text-primary opacity-0 group-hover/btn:opacity-100 transition-opacity transform group-hover/btn:translate-x-1 duration-300"></i>
-                        </div>
-                    </div>`;
-                }).join('');
-
-                return `<div class="glass-card p-2 md:p-3 rounded-2xl flex gap-3 md:gap-4 hover:border-primary/40 transition-colors duration-500 cursor-pointer group animate-fade-in-up shadow-lg hover:shadow-[0_8px_30px_rgba(255,69,0,0.15)]"
-                    style="animation-delay: ${i * 0.03}s"
-                    onclick="navigate('/manga?url=${encodeURIComponent(m.url)}')">
-                    
-                    <div class="relative w-20 md:w-24 flex-shrink-0 overflow-hidden rounded-xl border border-white/5">
-                        <div class="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 mix-blend-overlay transition-opacity duration-300 z-10 pointer-events-none"></div>
-                        <img src="${proxify(m.image)}"
-                            class="w-full h-[120px] md:h-[135px] object-cover bg-dark-800 group-hover:scale-110 transition-transform duration-700"
-                            loading="lazy">
-                        ${getBadgeUI(m.badge)}
-                    </div>
-                    
-                    <div class="flex-1 flex flex-col justify-center min-w-0 pr-1">
-                        <h3 class="font-black font-display text-sm md:text-base leading-tight truncate mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-primary transition-all pb-1">${clean(m.title)}</h3>
-                        <div class="flex flex-col gap-0.5">
-                            ${chaptersHTML}
+    // ── Popular ─────────────────
+    if (page === 1 && popular.length > 0) {
+        popContainer.innerHTML = popular.map((m, i) => `
+            <div onclick="navigate('/manga?url=${encodeURIComponent(m.url)}')" class="flex-none w-40 md:w-56 group cursor-pointer ${fromCache ? '' : 'animate-fade-in-up'} snap-start" style="animation-delay: ${i * 0.05}s">
+                <div class="relative overflow-hidden rounded-2xl aspect-[2/3] mb-3 shadow-[0_4px_20px_rgba(0,0,0,0.5)] group-hover:shadow-[0_8px_30px_rgba(255,69,0,0.3)] transition-all duration-500 border border-white/5 group-hover:border-primary/50">
+                    <img src="${proxify(m.image)}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out bg-dark-800" loading="lazy">
+                    <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/20 to-transparent opacity-80 group-hover:opacity-60 transition-opacity duration-300"></div>
+                    ${getBadgeUI(m.badge)}
+                    <div class="absolute bottom-3 left-3 right-3 text-center">
+                        <div class="glass inline-block px-3 py-1 rounded-full text-[9px] font-bold text-white mb-2 shadow-lg">
+                            <i class="fas fa-fire text-primary mr-1"></i> ${clean(m.lastChapter)}
                         </div>
                     </div>
-                </div>`;
-            }).join('');
-        }
-    } catch (e) {
-        upContainer.innerHTML = errorHTML(e.message, `renderHome(${page})`);
-        if (page === 1) popSection.style.display = 'none';
+                </div>
+                <h3 class="text-xs md:text-sm font-bold font-display line-clamp-2 leading-tight group-hover:text-primary transition-colors text-center px-1">${clean(m.title)}</h3>
+            </div>`
+        ).join('');
+    } else if (page === 1) {
+        popSection.style.display = 'none';
+    }
+
+    // ── Updates ───────────────────────
+    if (updates.length === 0) {
+        if (!fromCache) upContainer.innerHTML = '<div class="col-span-full py-20 text-center text-gray-500 font-bold uppercase tracking-widest text-sm">No transmissions found</div>';
+    } else {
+        upContainer.innerHTML = updates.map((m, i) => {
+            const chaptersHTML = (m.chapters || []).map(c => `
+                <div onclick="event.stopPropagation(); navigate('/read?url=${encodeURIComponent(c.url)}&title=${encodeURIComponent(`${clean(m.title)} - ${clean(c.name)}`)}')"
+                    class="glass text-[10px] md:text-xs px-3 py-1.5 rounded-lg mt-1.5 hover:bg-primary/20 hover:border-primary/50 border border-white/5 transition-all duration-300 flex justify-between items-center group/btn cursor-pointer">
+                    <span class="font-bold truncate text-gray-300 group-hover/btn:text-white">${clean(c.name)}</span>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <span class="text-[8px] md:text-[9px] text-gray-500 group-hover/btn:text-primary transition-colors uppercase font-bold tracking-wider">${clean(c.time)}</span>
+                        <i class="fas fa-play text-[8px] text-primary opacity-0 group-hover/btn:opacity-100 transition-opacity transform group-hover/btn:translate-x-1 duration-300"></i>
+                    </div>
+                </div>`).join('');
+
+            return `
+            <div class="glass-card p-2 md:p-3 rounded-2xl flex gap-3 md:gap-4 hover:border-primary/40 transition-colors duration-500 cursor-pointer group ${fromCache ? '' : 'animate-fade-in-up'} shadow-lg hover:shadow-[0_8px_30px_rgba(255,69,0,0.15)]"
+                style="animation-delay: ${i * 0.03}s"
+                onclick="navigate('/manga?url=${encodeURIComponent(m.url)}')">
+                <div class="relative w-20 md:w-24 flex-shrink-0 overflow-hidden rounded-xl border border-white/5">
+                    <img src="${proxify(m.image)}" class="w-full h-[120px] md:h-[135px] object-cover bg-dark-800 group-hover:scale-110 transition-transform duration-700" loading="lazy">
+                    ${getBadgeUI(m.badge)}
+                </div>
+                <div class="flex-1 flex flex-col justify-center min-w-0 pr-1">
+                    <h3 class="font-black font-display text-sm md:text-base leading-tight truncate mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-primary transition-all pb-1">${clean(m.title)}</h3>
+                    <div class="flex flex-col gap-0.5">${chaptersHTML}</div>
+                </div>
+            </div>`;
+        }).join('');
     }
 }
 
@@ -233,7 +238,7 @@ async function renderDetail(url) {
     document.getElementById('d-title').innerText = '';
     document.getElementById('d-synopsis').innerText = '';
     document.getElementById('d-info').innerHTML = '';
-    document.getElementById('d-bg').style.backgroundImage = 'none';
+    document.getElementById('detail-bg').style.backgroundImage = 'none'; // Fixed ID
     const mainImg = document.getElementById('d-image');
     mainImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
@@ -257,7 +262,7 @@ async function renderDetail(url) {
         
         const proxifiedImg = proxify(d.image);
         mainImg.src = proxifiedImg;
-        document.getElementById('d-bg').style.backgroundImage = `url('${proxifiedImg}')`;
+        document.getElementById('detail-bg').style.backgroundImage = `url('${proxifiedImg}')`; // Fixed ID
 
         // Render Meta Info
         document.getElementById('d-info').innerHTML = Object.entries(d.info || {}).map(([k, v]) => `
