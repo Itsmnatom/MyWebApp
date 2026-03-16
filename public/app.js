@@ -343,12 +343,17 @@ async function renderReader(url, title) {
 
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
-        const res = await fetch(`${API}/manga/read?url=${encodeURIComponent(url)}`, { signal: controller.signal });
+        const nocache = url.includes('nocache=1') ? '&nocache=1' : '';
+        const fetchUrl = `${API}/manga/read?url=${encodeURIComponent(decodeURIComponent(url))}${nocache}`;
+        
+        console.log('[SpeedManga] Initiating fetch for:', url);
+        const res = await fetch(fetchUrl, { signal: controller.signal });
         clearTimeout(timeoutId);
 
-        if (!res.ok) throw new Error(`HTTP ${res.status} [Signal Weak]`);
+        console.log('[SpeedManga] Fetch response status:', res.status);
+        if (!res.ok) throw new Error(`HTTP ${res.status} [Link Unstable]`);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
@@ -359,6 +364,10 @@ async function renderReader(url, title) {
                 </div>
                 <h3 class="text-white font-black font-display text-xl mb-2">PAGES CLASSIFIED</h3>
                 <p class="text-xs text-gray-500 max-w-sm mx-auto">The source materials could not be extracted. Protection systems or broken links detected.</p>
+                <button onclick="renderReader('${url.replace(/'/g, "\\'")}${url.includes('?') ? '&' : '?'}nocache=1', '${title.replace(/'/g, "\\'")}')"
+                    class="mt-8 bg-white/5 hover:bg-primary border border-white/10 px-8 py-3 rounded-2xl text-[10px] uppercase font-black tracking-widest transition-all">
+                    Attempt Bypass Force
+                </button>
             </div>`;
             return;
         }
@@ -373,7 +382,7 @@ async function renderReader(url, title) {
 
         // Bottom Navigation UI
         if (data.prevUrl) {
-            const prevPath = `/read?url=${encodeURIComponent(data.prevUrl)}&title=Previous`;
+            const prevPath = `/read?url=${encodeURIComponent(decodeURIComponent(data.prevUrl))}&title=Previous`;
             navBottom.innerHTML += `<button onclick="navigate('${prevPath}')"
                 class="glass hover:bg-white/10 px-6 py-3.5 rounded-2xl text-xs font-bold tracking-widest uppercase transition-all duration-300 hover:-translate-x-1 flex items-center gap-3">
                 <i class="fas fa-arrow-left opacity-70"></i> Prev Chapter
@@ -381,7 +390,7 @@ async function renderReader(url, title) {
         }
         
         if (data.nextUrl) {
-            const nextPath = `/read?url=${encodeURIComponent(data.nextUrl)}&title=Next`;
+            const nextPath = `/read?url=${encodeURIComponent(decodeURIComponent(data.nextUrl))}&title=Next`;
             navBottom.innerHTML += `<button onclick="navigate('${nextPath}')"
                 class="bg-gradient-to-r from-primary to-secondary hover:brightness-110 px-8 py-3.5 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-[0_0_20px_rgba(255,69,0,0.3)] hover:-translate-y-1 flex items-center gap-3">
                 Next Chapter <i class="fas fa-arrow-right"></i>
@@ -397,10 +406,16 @@ async function renderReader(url, title) {
             </div>
             <h3 class="text-white font-black font-display text-xl mb-3">CONNECTION LOST</h3>
             <code class="text-[10px] bg-black/50 p-3 rounded-lg block border border-red-900/30 text-gray-400 mb-6 truncate">${clean(e.message)}</code>
-            <button onclick="renderReader('${url.replace(/'/g, "\\'")}', '${title.replace(/'/g, "\\'")}')"
-                class="w-full bg-white/5 hover:bg-primary border border-white/10 hover:border-primary px-6 py-3 rounded-2xl text-xs font-bold tracking-widest uppercase transition-all duration-300 group">
-                <i class="fas fa-rotate-right mr-2 group-hover:rotate-180 transition-transform duration-500"></i> Re-Establish Link
-            </button>
+            <div class="flex flex-col gap-3">
+                <button onclick="renderReader('${url.replace(/'/g, "\\'")}', '${title.replace(/'/g, "\\'")}')"
+                    class="w-full bg-white/5 hover:bg-primary border border-white/10 hover:border-primary px-6 py-3.5 rounded-2xl text-xs font-bold tracking-widest uppercase transition-all duration-300 group">
+                    <i class="fas fa-rotate-right mr-2 group-hover:rotate-180 transition-transform duration-500"></i> Retry Connection
+                </button>
+                <button onclick="renderReader('${url.replace(/'/g, "\\'")}${url.includes('?') ? '&' : '?'}nocache=1', '${title.replace(/'/g, "\\'")}')"
+                    class="w-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-6 py-3 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all duration-300">
+                    Hard Reset (Bypass Cache)
+                </button>
+            </div>
         </div>`;
     }
 }

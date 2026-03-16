@@ -25,6 +25,15 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const TARGET_SITE = 'https://speed-manga.net/';
 
+// Global Error Logging
+process.on('uncaughtException', (err) => {
+    console.error('[CRITICAL] Uncaught Exception:', err.message);
+    console.error(err.stack);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[CRITICAL] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -80,15 +89,18 @@ async function fetchHtml(url) {
                 devices: ['desktop'],
                 operatingSystems: ['windows']
             },
-            timeout: { request: 20000 }, // Increased to 20s for slow Render
+            timeout: { request: 30000 }, // Increased to 30s for heavy pages
             retry: { limit: 1 }
         });
-        console.log('[SpeedManga] Fetch response status:', response.statusCode);
-        if (!response.ok) throw new Error(`HTTP ${response.statusCode} [Link Unstable]`);
+        console.log(`[fetchHtml] Success [${response.statusCode}] for ${url.substring(0, 60)}...`);
         return response.body;
     } catch (error) {
-        console.error(`[fetchHtml] Failed to fetch ${url}:`, error.message);
-        throw new Error(`Failed to fetch ${url}: ${error.message}`);
+        console.error(`[fetchHtml] CRASH for ${url}:`, error.message);
+        if (error.response) {
+            console.error(`[fetchHtml] Status: ${error.response.statusCode}`);
+            // If we got a 404/500 from the TARGET site, we should report it clearly
+        }
+        throw error;
     }
 }
 
@@ -320,11 +332,28 @@ app.get('/api/manga/details', async (req, res) => {
 //  API: READ CHAPTER
 // ══════════════════════════════════════════════════
 app.get('/api/manga/read', async (req, res) => {
-    const chapterUrl = req.query.url;
+    let chapterUrl = req.query.url;
     if (!chapterUrl) return res.status(400).json({ error: 'Missing URL' });
 
-    const cached = CACHE.read.get(chapterUrl);
-    if (cached) return res.json(cached);
+    // Normalize URL (Handle Thai characters and encoding mess)
+    try {
+        chapterUrl = decodeURIComponent(chapterUrl);
+        if (!chapterUrl.startsWith('http')) {
+            // Check if it's relative
+            if (chapterUrl.startsWith('/')) chapterUrl = TARGET_SITE.slice(0, -1) + chapterUrl;
+            else throw new Error('Invalid URL format');
+        }
+    } catch (e) {
+        console.error('[API] URL Normalization failed:', e.message);
+    }
+
+    console.log(`[API] Read requested: ${chapterUrl}`);
+    const nocache = req.query.nocache === '1';
+    
+    if (!nocache) {
+        const cached = CACHE.read.get(chapterUrl);
+        if (cached) return res.json(cached);
+    }
 
     try {
         if (!chapterUrl.startsWith('http')) throw new Error('Invalid chapter URL');
@@ -385,7 +414,11 @@ app.get('/api/manga/read', async (req, res) => {
         const data = { images: imageUrls, prevUrl, nextUrl };
         CACHE.read.set(chapterUrl, data, 60 * 60 * 1000);
         res.json(data);
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) {
+        console.error(`[API:READ] Crash for ${chapterUrl}:`, e.message);
+        console.error(e.stack);
+        res.status(500).json({ error: e.message, stack: process.env.NODE_ENV === 'development' ? e.stack : undefined });
+    }
 });
 
 // ══════════════════════════════════════════════════
