@@ -1,142 +1,152 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="th" class="scroll-smooth">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="referrer" content="no-referrer">
-    <title>SpeedManga - Full Experience Engine</title>
+    <title>SpeedManga - Premium Experience</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;900&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Kanit', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#FF4500', // Vibrant Orange/Red
+                        secondary: '#FF8C00',
+                        dark: {
+                            900: '#050505',
+                            800: '#121212',
+                            700: '#1E1E1E',
+                            600: '#2A2A2A',
+                        }
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
     <style>
-        /* ============================================
-           Base & Layout
-        ============================================ */
-        * {
-            box-sizing: border-box;
-        }
-
+        /* Base Styling */
         body {
-            font-family: 'Kanit', sans-serif;
-            background-color: #0a0a0a;
-            color: #e5e5e5;
+            background-color: #050505;
+            color: #F3F4F6;
             margin: 0;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(255, 69, 0, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(255, 140, 0, 0.03) 0%, transparent 50%);
+            background-attachment: fixed;
         }
 
-        /* ============================================
-           Skeleton Loader
-        ============================================ */
+        /* Glassmorphism Utilities */
+        .glass {
+            background: rgba(18, 18, 18, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .glass-card {
+            background: rgba(30, 30, 30, 0.4);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        /* Text Gradients */
+        .text-gradient {
+            background: linear-gradient(135deg, #FF4500 0%, #FF8C00 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Skeleton Loader */
         .skeleton {
-            background: linear-gradient(90deg, #1a1a1a 25%, #252525 50%, #1a1a1a 75%);
+            background: linear-gradient(90deg, #1A1A1A 25%, #2A2A2A 50%, #1A1A1A 75%);
             background-size: 200% 100%;
             animation: shimmer 1.5s infinite;
-            border-radius: 0.5rem;
+            border-radius: 0.75rem;
         }
-
         @keyframes shimmer {
-            0% {
-                background-position: 200% 0;
-            }
-
-            100% {
-                background-position: -200% 0;
-            }
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
 
-        /* ============================================
-           Scrollbar
-        ============================================ */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #0a0a0a;
-        }
-
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #050505; }
         ::-webkit-scrollbar-thumb {
-            background: #ff6b00;
+            background: #FF4500;
             border-radius: 10px;
+            border: 2px solid #050505;
         }
+        ::-webkit-scrollbar-thumb:hover { background: #FF8C00; }
 
-        /* ============================================
-           Reader
-        ============================================ */
+        /* General Utilities */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .line-clamp-5 { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+
+        /* Reader Customization */
         .reader-image-container img {
             max-width: 100%;
-            height: auto;
+            width: 100%;
             display: block;
-            margin: 0 auto;
-            background-color: #111;
-            min-height: 300px;
+            margin: 0;
+            background-color: #0A0A0A;
+            min-height: 400px;
         }
-
-        /* ============================================
-           Float Action Buttons
-        ============================================ */
-        .btn-float {
-            width: 45px;
-            height: 45px;
-            background-color: #ff6b00;
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-            cursor: pointer;
-            transition: transform 0.2s, background-color 0.2s;
-        }
-
-        .btn-float:hover {
-            transform: scale(1.1);
-            background-color: #e66000;
-        }
-
-        /* ============================================
-           Badges
-        ============================================ */
-        .badge-manhwa {
-            background: linear-gradient(135deg, #FF416C 0%, #FF4B2B 100%);
-        }
-
-        /* ============================================
-           Utility
-        ============================================ */
-        .line-clamp-2 {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .line-clamp-6 {
-            display: -webkit-box;
-            -webkit-line-clamp: 6;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+        
+        @media (min-width: 768px) {
+            .reader-image-container img {
+                width: 80%;
+                max-width: 900px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+                margin: 0 auto;
+            }
         }
     </style>
 </head>
 
-<body>
+<body class="antialiased selection:bg-primary selection:text-white">
 
     <!-- ============================================
-         NAVIGATION
+         NAVIGATION (Glassmorphism)
     ============================================ -->
-    <nav id="main-header" class="bg-[#ff6b00] p-4 shadow-xl sticky top-0 z-50">
-        <div class="container mx-auto flex justify-between items-center">
-            <a href="javascript:navigate('/')" class="text-2xl md:text-3xl font-black text-white italic">
-                Speed<span class="text-black">Manga</span>
+    <nav id="main-header" class="glass sticky top-0 z-50 transition-all duration-300">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="javascript:navigate('/')" class="font-display text-2xl md:text-3xl font-black tracking-tighter hover:scale-105 transition-transform duration-300">
+                SPEED<span class="text-gradient">MANGA</span>
             </a>
-            <div id="status-dot"
-                class="flex items-center gap-2 text-[10px] font-bold text-white bg-black/20 px-3 py-1 rounded-full uppercase">
-                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                Full Engine Active
+            <div class="flex items-center gap-3 bg-dark-800/80 border border-white/5 px-4 py-1.5 rounded-full shadow-inner">
+                <div class="relative flex h-2.5 w-2.5">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                </div>
+                <span class="text-[10px] md:text-xs font-bold tracking-wider text-gray-300 uppercase mt-0.5">Engine v4</span>
             </div>
         </div>
     </nav>
@@ -144,44 +154,61 @@
     <!-- ============================================
          HOME VIEW
     ============================================ -->
-    <div id="home-view" class="hidden container mx-auto px-4 py-8">
-
-        <!-- Popular Section (หน้า 1 เท่านั้น) -->
-        <div id="popular-section">
-            <h2 class="text-xl font-bold mb-6 border-l-4 border-orange-500 pl-3 uppercase">
-                มังงะยอดนิยมประจำวัน
-            </h2>
-            <div id="popular-container" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4 mb-12">
-                <div class="skeleton h-64"></div>
-                <div class="skeleton h-64"></div>
-                <div class="skeleton h-64"></div>
-                <div class="skeleton h-64"></div>
+    <div id="home-view" class="hidden min-h-screen pb-20">
+        
+        <!-- Hero / Popular Section -->
+        <div id="popular-section" class="relative pt-8 pb-12 mb-8">
+            <div class="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none"></div>
+            <div class="container mx-auto px-4 md:px-6 relative z-10">
+                <div class="flex items-center gap-3 mb-8">
+                    <div class="w-1.5 h-8 bg-gradient-to-b from-primary to-secondary rounded-full"></div>
+                    <h2 class="text-2xl md:text-3xl font-black tracking-tight drop-shadow-lg uppercase font-display">
+                        Trending <span class="text-gradient">Now</span>
+                    </h2>
+                </div>
+                
+                <!-- Horizontal Scroll for Popular -->
+                <div class="relative group">
+                    <div id="popular-container" class="flex gap-4 md:gap-6 overflow-x-auto hide-scrollbar pb-8 snap-x snap-mandatory px-2">
+                        <!-- Skeletons -->
+                        <div class="skeleton w-40 md:w-56 h-60 md:h-80 flex-none rounded-2xl"></div>
+                        <div class="skeleton w-40 md:w-56 h-60 md:h-80 flex-none rounded-2xl"></div>
+                        <div class="skeleton w-40 md:w-56 h-60 md:h-80 flex-none rounded-2xl"></div>
+                        <div class="skeleton w-40 md:w-56 h-60 md:h-80 flex-none rounded-2xl"></div>
+                        <div class="skeleton w-40 md:w-56 h-60 md:h-80 flex-none rounded-2xl"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Updates -->
-        <div class="flex flex-col lg:flex-row gap-8">
-            <div class="flex-1">
-                <h2 class="text-xl font-bold mb-6 border-l-4 border-orange-500 pl-3 uppercase">
-                    อัปเดตทั้งหมด (เรียง Manhwa ขึ้นก่อน)
-                </h2>
-                <div id="updates-container" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"></div>
-
-                <!-- Pagination -->
-                <div id="pagination" class="flex justify-center items-center gap-4 mt-12 mb-8">
-                    <button id="btn-prev"
-                        class="bg-gray-800 hover:bg-orange-600 px-6 py-3 rounded-full font-bold transition hidden shadow-lg">
-                        <i class="fas fa-chevron-left mr-2"></i>หน้าก่อนหน้า
-                    </button>
-                    <span id="page-indicator"
-                        class="text-orange-500 font-black text-xl px-4 py-2 bg-orange-600/10 rounded-xl">
-                        หน้า 1
-                    </span>
-                    <button id="btn-next"
-                        class="bg-gray-800 hover:bg-orange-600 px-6 py-3 rounded-full font-bold transition shadow-lg">
-                        หน้าถัดไป <i class="fas fa-chevron-right ml-2"></i>
-                    </button>
+        <!-- Latest Updates Section -->
+        <div class="container mx-auto px-4 md:px-6">
+            <div class="flex items-center justify-between mb-8">
+                <div class="flex items-center gap-3">
+                    <div class="w-1.5 h-8 bg-dark-700 rounded-full"></div>
+                    <h2 class="text-xl md:text-2xl font-bold tracking-tight uppercase font-display">
+                        Latest Releases
+                    </h2>
                 </div>
+            </div>
+
+            <div id="updates-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+                <!-- Updates injected here -->
+            </div>
+
+            <!-- Pagination -->
+            <div id="pagination" class="flex justify-center items-center gap-3 md:gap-6 mt-16">
+                <button id="btn-prev" class="glass hover:bg-white/10 px-5 md:px-8 py-3 rounded-2xl font-bold transition-all duration-300 hidden hover:-translate-x-1 flex items-center gap-2">
+                    <i class="fas fa-arrow-left text-sm opacity-70"></i> Prev
+                </button>
+                <div class="glass-card px-6 py-3 rounded-2xl border-white/10 shadow-[0_0_20px_rgba(255,69,0,0.1)]">
+                    <span id="page-indicator" class="text-primary font-black text-lg md:text-xl font-display">
+                        PAGE 1
+                    </span>
+                </div>
+                <button id="btn-next" class="bg-gradient-to-r from-primary to-secondary hover:from-secondary hover:to-primary px-5 md:px-8 py-3 rounded-2xl font-bold transition-all duration-300 shadow-[0_4px_20px_rgba(255,69,0,0.4)] hover:-translate-y-0.5 flex items-center gap-2">
+                    Next <i class="fas fa-arrow-right text-sm"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -189,25 +216,53 @@
     <!-- ============================================
          DETAIL VIEW
     ============================================ -->
-    <div id="detail-view" class="hidden container mx-auto px-4 py-8 max-w-5xl">
-        <button onclick="window.history.back()" class="mb-6 text-orange-500 font-bold hover:underline">
-            <i class="fas fa-arrow-left mr-2"></i>กลับ
-        </button>
+    <div id="detail-view" class="hidden min-h-screen relative pb-20">
+        <!-- Dynamic Background Blur -->
+        <div id="detail-bg" class="absolute inset-0 h-[60vh] bg-cover bg-center opacity-20 mask-image:linear-gradient(to_bottom,black_0%,transparent_100%) blur-2xl z-0 transition-all duration-1000"></div>
+        <div class="absolute inset-0 h-[60vh] bg-gradient-to-b from-dark-900/40 via-dark-900/80 to-dark-900 z-0"></div>
 
-        <div id="detail-card" class="bg-[#151515] rounded-3xl p-6 md:p-10 border border-gray-800 shadow-2xl">
-            <div class="flex flex-col md:flex-row gap-10">
-                <img id="d-image"
-                    class="w-full md:w-72 rounded-2xl shadow-2xl border border-gray-700 bg-gray-900 object-cover aspect-[2/3]">
-                <div class="flex-1">
-                    <h1 id="d-title" class="text-2xl md:text-3xl font-black mb-4 text-orange-500 leading-tight"></h1>
-                    <p id="d-synopsis" class="text-gray-400 text-sm mb-8 leading-relaxed line-clamp-6"></p>
-                    <div id="d-info" class="grid grid-cols-2 gap-4 text-xs"></div>
+        <div class="container mx-auto px-4 py-8 relative z-10 max-w-6xl">
+            <button onclick="window.history.back()" class="group mb-8 inline-flex items-center gap-3 text-gray-400 hover:text-white transition-colors">
+                <div class="w-10 h-10 rounded-full glass flex items-center justify-center group-hover:-translate-x-1 transition-transform">
+                    <i class="fas fa-arrow-left"></i>
+                </div>
+                <span class="font-bold tracking-wider text-sm">BACK</span>
+            </button>
+
+            <!-- Main Info Card -->
+            <div class="flex flex-col md:flex-row gap-8 lg:gap-12 animate-fade-in-up">
+                <!-- Cover Image -->
+                <div class="flex-shrink-0 w-48 md:w-72 mx-auto md:mx-0 relative group">
+                    <div class="absolute inset-0 bg-primary/20 blur-xl rounded-2xl group-hover:bg-primary/30 transition-colors duration-500"></div>
+                    <img id="d-image" class="w-full relative rounded-2xl shadow-2xl border border-white/10 object-cover aspect-[2/3] z-10" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
+                </div>
+                
+                <!-- Details -->
+                <div class="flex-1 flex flex-col justify-center">
+                    <h1 id="d-title" class="text-3xl md:text-5xl font-black mb-4 leading-tight font-display tracking-tight text-white drop-shadow-md"></h1>
+                    
+                    <div class="glass-card p-5 md:p-6 rounded-2xl mb-8 border-white/5">
+                        <h3 class="text-primary text-xs font-bold uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <i class="fas fa-align-left"></i> Synopsis
+                        </h3>
+                        <p id="d-synopsis" class="text-gray-300 text-sm md:text-base leading-relaxed opacity-90 font-light line-clamp-5"></p>
+                    </div>
+                    
+                    <div id="d-info" class="flex flex-wrap gap-3 text-xs"></div>
                 </div>
             </div>
 
-            <div class="mt-12">
-                <h3 class="text-xl font-bold mb-6 border-b border-gray-800 pb-3">รายการตอน</h3>
-                <div id="d-chapters" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-4">
+            <!-- Chapters Section -->
+            <div class="mt-16 animate-fade-in-up" style="animation-delay: 0.1s;">
+                <div class="flex items-center gap-4 mb-8">
+                    <h3 class="text-2xl font-bold font-display uppercase tracking-tight">Chapters</h3>
+                    <div class="h-[1px] flex-1 bg-gradient-to-r from-white/10 to-transparent"></div>
+                </div>
+                
+                <div class="glass-card rounded-3xl p-2 md:p-6 border-white/5">
+                    <div id="d-chapters" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3 max-h-[600px] overflow-y-auto pr-2 custom-scroll">
+                        <!-- Chapters inserted here -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -216,38 +271,42 @@
     <!-- ============================================
          READER VIEW
     ============================================ -->
-    <div id="reader-view" class="hidden fixed inset-0 bg-black z-[100] overflow-y-auto">
-
-        <!-- Float Buttons -->
-        <div class="fixed bottom-6 right-6 flex flex-col gap-3 z-[110]">
-            <div onclick="document.getElementById('reader-view').scrollTo({ top: 0, behavior: 'smooth' })"
-                class="btn-float" title="ขึ้นบนสุด">
-                <i class="fas fa-chevron-up"></i>
-            </div>
-            <div id="float-next-btn" class="btn-float hidden" title="ตอนถัดไป">
-                <i class="fas fa-chevron-down text-lg"></i>
-            </div>
-        </div>
-
-        <!-- Reader Top Bar -->
-        <div
-            class="bg-[#1a1a1a]/95 backdrop-blur sticky top-0 p-4 flex justify-between items-center border-b border-gray-800 z-10">
-            <button onclick="window.history.back()" class="text-white font-bold hover:text-orange-500">
-                <i class="fas fa-chevron-left mr-2"></i>กลับ
+    <div id="reader-view" class="hidden fixed inset-0 bg-dark-900 z-[100] overflow-y-auto scroll-smooth">
+        
+        <!-- Interactive Float Controls -->
+        <div class="fixed bottom-6 right-6 flex flex-col gap-4 z-[110] transition-opacity duration-300" id="reader-floats">
+            <button onclick="document.getElementById('reader-view').scrollTo({ top: 0, behavior: 'smooth' })" class="w-12 h-12 rounded-full glass hover:bg-primary/20 hover:border-primary/50 text-white flex items-center justify-center shadow-2xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1">
+                <i class="fas fa-arrow-up"></i>
             </button>
-            <div id="r-title" class="text-[10px] md:text-xs font-bold text-orange-500 truncate px-4"></div>
-            <div class="w-8"></div>
+            <button id="float-next-btn" class="hidden w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center shadow-[0_0_30px_rgba(255,69,0,0.5)] transition-all duration-300 hover:scale-110">
+                <i class="fas fa-forward-step text-xl"></i>
+            </button>
         </div>
 
-        <!-- Images -->
-        <div id="r-images" class="flex flex-col items-center min-h-screen reader-image-container"></div>
+        <!-- Minimalist Top Bar -->
+        <div class="fixed top-0 inset-x-0 bg-gradient-to-b from-black/90 to-transparent pt-4 pb-12 px-4 flex justify-between items-start z-50 pointer-events-none transition-transform duration-300" id="reader-topbar">
+            <button onclick="window.history.back()" class="pointer-events-auto group px-4 py-2 rounded-full glass hover:bg-white/10 flex items-center gap-2 transition-colors">
+                <i class="fas fa-arrow-left text-sm opacity-70 group-hover:-translate-x-1 transition-transform"></i>
+                <span class="text-xs font-bold tracking-widest uppercase">Go Back</span>
+            </button>
+            
+            <div class="max-w-xs md:max-w-md bg-dark-900/80 backdrop-blur-md px-6 py-2 rounded-full border border-white/10 shadow-2xl pointer-events-auto hidden md:block">
+                <span id="r-title" class="text-xs font-bold text-gray-200 truncate block"></span>
+            </div>
+            
+            <div class="w-24"></div> <!-- Spacer -->
+        </div>
 
-        <!-- Reader Bottom Nav -->
-        <div class="p-10 text-center bg-[#111] border-t border-gray-800">
-            <div id="reader-nav-bottom" class="flex justify-center gap-4 mb-6"></div>
-            <button onclick="window.history.back()"
-                class="bg-gray-800 px-10 py-3 rounded-full font-bold hover:bg-gray-700 transition">
-                กลับหน้ารายละเอียด
+        <!-- Images Container -->
+        <div id="r-images" class="flex flex-col items-center min-h-screen reader-image-container pt-0 pb-20"></div>
+
+        <!-- Next/Prev Footer -->
+        <div class="p-6 md:p-12 text-center bg-gradient-to-t from-black to-transparent flex flex-col items-center">
+            <div class="w-full max-w-3xl h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent mb-8"></div>
+            <div id="reader-nav-bottom" class="flex justify-center flex-wrap gap-4 mb-12 w-full max-w-2xl px-4"></div>
+            
+            <button onclick="window.history.back()" class="text-gray-500 hover:text-white text-sm font-bold tracking-widest uppercase transition-colors flex items-center gap-2">
+                <i class="fas fa-home"></i> Return to Details
             </button>
         </div>
     </div>
@@ -256,6 +315,21 @@
          APP SCRIPT
     ============================================ -->
     <script src="app.js"></script>
+    <script>
+        // Reader scroll hide/show UI logic
+        const readerView = document.getElementById('reader-view');
+        const readerTopbar = document.getElementById('reader-topbar');
+        let lastScrollY = 0;
+        
+        readerView.addEventListener('scroll', () => {
+            const currentScrollY = readerView.scrollTop;
+            if (currentScrollY > 100 && currentScrollY > lastScrollY) {
+                readerTopbar.style.transform = 'translateY(-100%)';
+            } else {
+                readerTopbar.style.transform = 'translateY(0)';
+            }
+            lastScrollY = currentScrollY;
+        }, { passive: true });
+    </script>
 </body>
-
 </html>

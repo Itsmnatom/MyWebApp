@@ -1,6 +1,6 @@
 /**
- * SpeedManga - Frontend App (Optimized v2)
- * Fixes: popular stuck loading, better error states, retry button
+ * SpeedManga - Frontend App (Premium Aesthetic v3)
+ * Featuring glassmorphism, micro-animations, and dynamic blurred backgrounds.
  */
 
 'use strict';
@@ -16,7 +16,7 @@ function clean(str) {
 }
 
 function proxify(url) {
-    if (!url) return 'https://placehold.co/300x450?text=No+Image';
+    if (!url) return 'https://placehold.co/300x450?text=NO+IMAGE&font=outfit';
     if (url.startsWith('http')) return `${API}/proxy?url=${encodeURIComponent(url)}`;
     return url;
 }
@@ -24,36 +24,41 @@ function proxify(url) {
 function getBadgeUI(badge) {
     const b = (badge || '').toLowerCase();
     if (b.includes('manhwa') || b.includes('มังฮวา')) {
-        return '<div class="absolute top-0 right-0 badge-manhwa text-white text-[9px] font-bold px-2 py-0.5 rounded-bl-lg shadow-lg z-10">MANHWA</div>';
+        return '<div class="absolute top-2 left-2 bg-gradient-to-r from-primary to-[#ff2a5f] text-white text-[9px] font-bold tracking-widest px-2.5 py-1 rounded-full shadow-lg z-10 uppercase backdrop-blur-md">Manhwa</div>';
     }
-    return '<div class="absolute top-0 right-0 bg-gray-700/90 text-white text-[9px] font-bold px-2 py-0.5 rounded-bl-lg shadow-lg z-10">MANGA</div>';
+    return '<div class="absolute top-2 left-2 glass text-white text-[9px] font-bold tracking-widest px-2.5 py-1 rounded-full shadow-lg z-10 uppercase">Manga</div>';
 }
 
-function spinnerHTML(msg = 'กำลังโหลด...') {
-    return `<div class="col-span-full flex flex-col items-center justify-center py-20 gap-4">
-        <i class="fas fa-spinner fa-spin text-orange-500 text-4xl"></i>
-        <p class="text-gray-400 text-sm">${msg}</p>
+function spinnerHTML(msg = 'Authenticating Data...') {
+    return `<div class="col-span-full flex flex-col items-center justify-center py-32 gap-6 animate-fade-in-up">
+        <div class="relative w-16 h-16">
+            <div class="absolute inset-0 rounded-full border-t-2 border-primary animate-spin"></div>
+            <div class="absolute inset-2 rounded-full border-r-2 border-secondary animate-spin" style="animation-direction: reverse; animation-duration: 1.5s;"></div>
+            <i class="fas fa-bolt absolute inset-0 flex items-center justify-center text-primary/50 text-xl animate-pulse"></i>
+        </div>
+        <p class="text-gray-400 text-xs tracking-widest uppercase font-bold animate-pulse">${msg}</p>
     </div>`;
 }
 
 function errorHTML(msg, retryFn = null) {
     const retryBtn = retryFn
-        ? `<button onclick="${retryFn}" class="mt-4 bg-orange-600 hover:bg-orange-700 px-6 py-2 rounded-full text-sm font-bold transition">
-               <i class="fas fa-redo mr-2"></i>ลองใหม่
+        ? `<button onclick="${retryFn}" class="mt-6 bg-white/10 hover:bg-primary text-white border border-white/20 hover:border-primary px-8 py-2.5 rounded-full text-xs tracking-widest uppercase font-bold transition-all duration-300 shadow-xl hover:-translate-y-1">
+               <i class="fas fa-rotate-right mr-2"></i> Retry Connection
            </button>`
         : '';
-    return `<div class="col-span-full py-10 text-center bg-black/40 border border-red-900/40 rounded-2xl px-6">
-        <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-3 block"></i>
-        <p class="text-red-400 font-bold mb-1">โหลดข้อมูลล้มเหลว</p>
-        <code class="text-xs text-gray-500 break-words">${clean(msg)}</code>
+    return `<div class="col-span-full py-16 text-center glass-card rounded-3xl px-8 max-w-lg mx-auto border-red-900/30 animate-fade-in-up">
+        <div class="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6">
+            <i class="fas fa-triangle-exclamation text-red-500 text-2xl"></i>
+        </div>
+        <h3 class="text-white text-lg font-display font-black tracking-tight mb-2 uppercase">System Malfunction</h3>
+        <code class="text-[10px] text-red-300/60 block bg-black/40 p-3 rounded-lg border border-red-900/20 break-words mb-2">${clean(msg)}</code>
         ${retryBtn}
     </div>`;
 }
 
-// สร้าง skeleton cards
 function skeletonCards(count = 4, className = 'h-64') {
-    return Array(count).fill(0).map(() =>
-        `<div class="skeleton ${className} rounded-xl"></div>`
+    return Array(count).fill(0).map((_, i) =>
+        `<div class="skeleton ${className} rounded-2xl animate-pulse" style="animation-delay: ${i * 0.1}s"></div>`
     ).join('');
 }
 
@@ -75,23 +80,31 @@ async function handleLocation() {
     const targetTitle = params.get('title');
     const page = Math.max(1, parseInt(params.get('page')) || 1);
 
-    ['home-view', 'detail-view', 'reader-view'].forEach(id =>
-        document.getElementById(id).classList.add('hidden')
-    );
-    document.getElementById('main-header').style.display = 'block';
+    // Reset views
+    ['home-view', 'detail-view', 'reader-view'].forEach(id => {
+        const el = document.getElementById(id);
+        el.classList.add('hidden');
+        el.classList.remove('animate-fade-in-up'); // Reset animation
+    });
+    
+    document.getElementById('main-header').classList.remove('-translate-y-full');
     document.body.style.overflow = 'auto';
     window.scrollTo(0, 0);
 
     if (path === '/read' && targetUrl) {
         document.getElementById('reader-view').classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-        document.getElementById('main-header').style.display = 'none';
-        await renderReader(targetUrl, targetTitle || 'กำลังอ่าน');
+        document.body.style.overflow = 'hidden'; // Lock background scroll
+        document.getElementById('main-header').classList.add('-translate-y-full'); // Hide navbar
+        await renderReader(targetUrl, targetTitle || 'Reading...');
     } else if (path === '/manga' && targetUrl) {
-        document.getElementById('detail-view').classList.remove('hidden');
+        const dView = document.getElementById('detail-view');
+        dView.classList.remove('hidden');
+        dView.classList.add('animate-fade-in-up');
         await renderDetail(targetUrl);
     } else {
-        document.getElementById('home-view').classList.remove('hidden');
+        const hView = document.getElementById('home-view');
+        hView.classList.remove('hidden');
+        hView.classList.add('animate-fade-in-up');
         await renderHome(page);
     }
 }
@@ -105,21 +118,26 @@ async function renderHome(page) {
     const upContainer = document.getElementById('updates-container');
     const popSection = document.getElementById('popular-section');
 
-    // Popular section เฉพาะหน้า 1
     popSection.style.display = page === 1 ? 'block' : 'none';
     if (page === 1) {
-        popContainer.innerHTML = skeletonCards(7, 'h-64');
+        popContainer.innerHTML = skeletonCards(6, 'w-40 md:w-56 h-60 md:h-80 flex-none');
     }
-    upContainer.innerHTML = spinnerHTML(`กำลังโหลดรายการอัปเดต หน้า ${page}...`);
+    upContainer.innerHTML = spinnerHTML(`Synchronizing Page ${page}...`);
 
-    // Pagination
-    document.getElementById('page-indicator').innerText = `หน้า ${page}`;
+    document.getElementById('page-indicator').innerText = `PAGE ${page}`;
     const btnPrev = document.getElementById('btn-prev');
     const btnNext = document.getElementById('btn-next');
-    btnPrev.classList.toggle('hidden', page <= 1);
-    btnPrev.onclick = () => navigate(`/?page=${page - 1}`);
+    
+    if (page <= 1) {
+        btnPrev.classList.add('hidden');
+    } else {
+        btnPrev.classList.remove('hidden');
+        btnPrev.onclick = () => navigate(`/?page=${page - 1}`);
+    }
+    
     btnNext.onclick = () => navigate(`/?page=${page + 1}`);
     btnNext.disabled = false;
+    btnNext.classList.remove('opacity-50', 'pointer-events-none');
 
     try {
         const res = await fetch(`${API}/manga/home?page=${page}`);
@@ -129,60 +147,71 @@ async function renderHome(page) {
 
         const { popular = [], updates = [] } = data;
 
-        // ── Popular ───────────────────────────────
+        // ── Popular (Horizontal Scroll) ─────────────────
         if (page === 1) {
             if (popular.length > 0) {
-                popContainer.innerHTML = popular.map(m => `
-                    <div onclick="navigate('/manga?url=${encodeURIComponent(m.url)}')" class="cursor-pointer group">
-                        <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-gray-900 mb-2 border border-gray-800 shadow-lg">
+                popContainer.innerHTML = popular.map((m, i) => `
+                    <div onclick="navigate('/manga?url=${encodeURIComponent(m.url)}')" class="flex-none w-40 md:w-56 group cursor-pointer animate-fade-in-up snap-start" style="animation-delay: ${i * 0.05}s">
+                        <div class="relative overflow-hidden rounded-2xl aspect-[2/3] mb-3 shadow-[0_4px_20px_rgba(0,0,0,0.5)] group-hover:shadow-[0_8px_30px_rgba(255,69,0,0.3)] transition-all duration-500 border border-white/5 group-hover:border-primary/50">
                             <img src="${proxify(m.image)}"
-                                class="w-full h-full object-cover group-hover:scale-110 transition duration-500"
-                                loading="lazy"
-                                onerror="this.src='https://placehold.co/300x450?text=No+Image'">
+                                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out bg-dark-800"
+                                loading="lazy">
+                            <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/20 to-transparent opacity-80 group-hover:opacity-60 transition-opacity duration-300"></div>
+                            
                             ${getBadgeUI(m.badge)}
-                            <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black via-black/70 to-transparent p-2 pt-8 text-[10px] text-center text-orange-400 font-bold">
-                                ${clean(m.lastChapter)}
+                            
+                            <div class="absolute bottom-3 left-3 right-3 text-center">
+                                <div class="glass inline-block px-3 py-1 rounded-full text-[9px] font-bold text-white mb-2 shadow-lg">
+                                    <i class="fas fa-fire text-primary mr-1"></i> ${clean(m.lastChapter)}
+                                </div>
                             </div>
                         </div>
-                        <h3 class="text-[11px] font-bold line-clamp-2 group-hover:text-orange-500 transition leading-tight">
+                        <h3 class="text-xs md:text-sm font-bold font-display line-clamp-2 leading-tight group-hover:text-primary transition-colors text-center px-1">
                             ${clean(m.title)}
                         </h3>
                     </div>`
                 ).join('');
             } else {
-                // Popular อาจว่างได้ถ้า selector ไม่ตรง — ซ่อน section แทน error
                 popSection.style.display = 'none';
             }
         }
 
-        // ── Updates ───────────────────────────────
+        // ── Updates (Grid Layout) ───────────────────────
         if (updates.length === 0) {
-            upContainer.innerHTML = '<div class="col-span-full text-center py-10 text-gray-500">ไม่พบรายการอัปเดตในหน้านี้</div>';
+            upContainer.innerHTML = '<div class="col-span-full py-20 text-center text-gray-500 font-bold uppercase tracking-widest text-sm">No transmissions found</div>';
             btnNext.disabled = true;
-            btnNext.classList.add('opacity-40', 'cursor-not-allowed');
+            btnNext.classList.add('opacity-50', 'pointer-events-none');
         } else {
-            upContainer.innerHTML = updates.map(m => {
+            upContainer.innerHTML = updates.map((m, i) => {
                 const chaptersHTML = (m.chapters || []).map(c => {
                     const readPath = `/read?url=${encodeURIComponent(c.url)}&title=${encodeURIComponent(`${clean(m.title)} - ${clean(c.name)}`)}`;
                     return `<div onclick="event.stopPropagation(); navigate('${readPath}')"
-                        class="text-[10px] bg-black/40 p-1.5 px-3 rounded mt-1 hover:bg-orange-600 hover:text-white transition flex justify-between items-center group/btn border border-gray-800 hover:border-orange-500/30 cursor-pointer">
-                        <span class="font-medium truncate">${clean(c.name)}</span>
-                        <span class="text-[8px] opacity-40 group-hover/btn:opacity-100 ml-2 flex-shrink-0">อ่าน →</span>
+                        class="glass text-[10px] md:text-xs px-3 py-1.5 rounded-lg mt-1.5 hover:bg-primary/20 hover:border-primary/50 border border-white/5 transition-all duration-300 flex justify-between items-center group/btn cursor-pointer">
+                        <span class="font-bold truncate text-gray-300 group-hover/btn:text-white">${clean(c.name)}</span>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <span class="text-[8px] md:text-[9px] text-gray-500 group-hover/btn:text-primary transition-colors uppercase font-bold tracking-wider">${clean(c.time)}</span>
+                            <i class="fas fa-play text-[8px] text-primary opacity-0 group-hover/btn:opacity-100 transition-opacity transform group-hover/btn:translate-x-1 duration-300"></i>
+                        </div>
                     </div>`;
                 }).join('');
 
-                return `<div class="bg-[#151515] p-3 rounded-xl flex gap-3 border border-gray-800 hover:border-orange-500/60 transition cursor-pointer relative shadow-md group"
+                return `<div class="glass-card p-2 md:p-3 rounded-2xl flex gap-3 md:gap-4 hover:border-primary/40 transition-colors duration-500 cursor-pointer group animate-fade-in-up shadow-lg hover:shadow-[0_8px_30px_rgba(255,69,0,0.15)]"
+                    style="animation-delay: ${i * 0.03}s"
                     onclick="navigate('/manga?url=${encodeURIComponent(m.url)}')">
-                    ${getBadgeUI(m.badge)}
-                    <div class="flex-shrink-0">
+                    
+                    <div class="relative w-20 md:w-24 flex-shrink-0 overflow-hidden rounded-xl border border-white/5">
+                        <div class="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 mix-blend-overlay transition-opacity duration-300 z-10 pointer-events-none"></div>
                         <img src="${proxify(m.image)}"
-                            class="w-[72px] h-[100px] object-cover rounded-lg bg-gray-800"
-                            loading="lazy"
-                            onerror="this.src='https://placehold.co/150x220?text=No+Image'">
+                            class="w-full h-[120px] md:h-[135px] object-cover bg-dark-800 group-hover:scale-110 transition-transform duration-700"
+                            loading="lazy">
+                        ${getBadgeUI(m.badge)}
                     </div>
-                    <div class="flex-1 overflow-hidden flex flex-col justify-center min-w-0">
-                        <h3 class="font-bold text-sm truncate mb-1 pr-12 group-hover:text-orange-400 transition">${clean(m.title)}</h3>
-                        ${chaptersHTML}
+                    
+                    <div class="flex-1 flex flex-col justify-center min-w-0 pr-1">
+                        <h3 class="font-black font-display text-sm md:text-base leading-tight truncate mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-primary transition-all pb-1">${clean(m.title)}</h3>
+                        <div class="flex flex-col gap-0.5">
+                            ${chaptersHTML}
+                        </div>
                     </div>
                 </div>`;
             }).join('');
@@ -199,13 +228,14 @@ async function renderHome(page) {
 
 async function renderDetail(url) {
     const chaptersEl = document.getElementById('d-chapters');
-    chaptersEl.innerHTML = spinnerHTML('กำลังดึงข้อมูลมังงะ...');
+    chaptersEl.innerHTML = spinnerHTML('Extracting Archives...');
 
-    // Reset fields
     document.getElementById('d-title').innerText = '';
     document.getElementById('d-synopsis').innerText = '';
     document.getElementById('d-info').innerHTML = '';
-    document.getElementById('d-image').src = 'https://placehold.co/300x450?text=Loading';
+    document.getElementById('d-bg').style.backgroundImage = 'none';
+    const mainImg = document.getElementById('d-image');
+    mainImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
     try {
         const res = await fetch(`${API}/manga/details?url=${encodeURIComponent(url)}`);
@@ -213,31 +243,40 @@ async function renderDetail(url) {
         const d = await res.json();
         if (d.error) throw new Error(d.error);
 
-        document.getElementById('d-title').innerText = d.title || 'Unknown';
-        document.getElementById('d-synopsis').innerText = d.synopsis || 'ไม่มีเนื้อเรื่อง';
-        document.getElementById('d-image').src = proxify(d.image);
-        document.getElementById('d-image').onerror = function () {
-            this.src = 'https://placehold.co/300x450?text=No+Image';
-        };
+        document.getElementById('d-title').innerText = d.title || 'Unknown Classified';
+        document.getElementById('d-synopsis').innerText = d.synopsis || 'No synopsis data recovered from archives.';
+        
+        const proxifiedImg = proxify(d.image);
+        mainImg.src = proxifiedImg;
+        document.getElementById('d-bg').style.backgroundImage = `url('${proxifiedImg}')`;
 
+        // Render Meta Info
         document.getElementById('d-info').innerHTML = Object.entries(d.info || {}).map(([k, v]) => `
-            <div class="bg-black/40 p-3 rounded-xl border border-gray-800">
-                <b class="text-orange-500 block text-[10px] uppercase mb-1">${clean(k)}</b>
-                <span class="text-xs">${clean(v)}</span>
+            <div class="glass px-4 py-2 rounded-xl flex items-center gap-3 hover:bg-white/5 transition-colors">
+                <span class="text-primary font-black uppercase tracking-widest text-[9px] opacity-80">${clean(k)}</span>
+                <span class="text-gray-200 font-medium text-xs">${clean(v)}</span>
             </div>`
         ).join('');
 
+        // Render Chapters List
         if (d.chapters?.length > 0) {
-            chaptersEl.innerHTML = d.chapters.map(c => {
+            chaptersEl.innerHTML = d.chapters.map((c, i) => {
                 const readPath = `/read?url=${encodeURIComponent(c.url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(c.name)}`)}`;
                 return `<button onclick="navigate('${readPath}')"
-                    class="bg-black/30 p-4 rounded-xl text-left text-sm hover:bg-orange-600 hover:text-white transition flex justify-between items-center group border border-gray-800/50 hover:border-orange-500/30">
-                    <span class="font-medium truncate mr-2">${clean(c.name)}</span>
-                    <span class="text-[9px] opacity-40 whitespace-nowrap group-hover:opacity-100 flex-shrink-0">${clean(c.time)}</span>
+                    class="w-full relative overflow-hidden glass hover:bg-white/10 p-4 rounded-2xl text-left transition-all duration-300 flex justify-between items-center group animate-fade-in-up border border-white/5 hover:border-primary/50"
+                    style="animation-delay: ${Math.min(i * 0.02, 0.5)}s">
+                    <div class="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-primary to-secondary transform scale-x-0 origin-left group-hover:scale-x-100 transition-transform duration-300"></div>
+                    <div class="flex items-center gap-3 min-w-0 pr-2">
+                        <div class="w-8 h-8 rounded-full bg-dark-800 border border-white/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary group-hover:border-primary transition-colors">
+                            <i class="fas fa-book-open text-[10px] text-gray-400 group-hover:text-white"></i>
+                        </div>
+                        <span class="font-bold text-sm text-gray-200 group-hover:text-white truncate">${clean(c.name)}</span>
+                    </div>
+                    <span class="text-[10px] font-bold tracking-widest uppercase opacity-40 group-hover:opacity-100 group-hover:text-primary transition-colors flex-shrink-0 whitespace-nowrap pl-2">${clean(c.time)}</span>
                 </button>`;
             }).join('');
         } else {
-            chaptersEl.innerHTML = '<p class="col-span-full text-center py-10 text-gray-500">ไม่พบรายการตอน</p>';
+            chaptersEl.innerHTML = '<div class="col-span-full py-12 text-center text-gray-600 font-bold uppercase tracking-widest text-xs border border-dashed border-gray-800 rounded-2xl">No chapters available</div>';
         }
     } catch (e) {
         chaptersEl.innerHTML = errorHTML(e.message);
@@ -258,10 +297,14 @@ async function renderReader(url, title) {
     navBottom.innerHTML = '';
     floatNext.classList.add('hidden');
 
-    container.innerHTML = `<div class="py-40 flex flex-col items-center gap-4">
-        <i class="fas fa-spinner fa-spin fa-3x text-orange-500"></i>
-        <p class="animate-pulse text-gray-400">ทะลวงปุ่ม 18+ และดึงภาพ...</p>
-        <p class="text-xs text-gray-600">อาจใช้เวลา 5-15 วินาที</p>
+    container.innerHTML = `<div class="py-40 flex flex-col items-center gap-6 animate-fade-in-up w-full">
+        <div class="w-20 h-20 rounded-3xl glass-card flex items-center justify-center border-primary/30 shadow-[0_0_30px_rgba(255,69,0,0.2)]">
+            <i class="fas fa-layer-group fa-spin text-primary text-3xl"></i>
+        </div>
+        <div class="text-center">
+            <h3 class="text-white font-black font-display tracking-widest uppercase mb-2">Decrypting Pages</h3>
+            <p class="text-xs text-gray-500 font-bold tracking-widest uppercase">Connecting to relay...</p>
+        </div>
     </div>`;
 
     try {
@@ -271,46 +314,53 @@ async function renderReader(url, title) {
         if (data.error) throw new Error(data.error);
 
         if (!data.images?.length) {
-            container.innerHTML = `<div class="mt-40 text-center px-4">
-                <i class="fas fa-image text-4xl mb-4 text-gray-600 block"></i>
-                <p class="text-gray-400">ไม่พบรูปภาพในตอนนี้</p>
-                <p class="text-xs text-gray-600 mt-2">อาจถูก block หรือ URL เปลี่ยน</p>
+            container.innerHTML = `<div class="mt-40 text-center px-4 animate-fade-in-up">
+                <div class="w-24 h-24 rounded-full bg-dark-800 flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-image-slash text-4xl text-gray-600"></i>
+                </div>
+                <h3 class="text-white font-black font-display text-xl mb-2">PAGES CLASSIFIED</h3>
+                <p class="text-xs text-gray-500 max-w-sm mx-auto">The source materials could not be extracted. Protection systems or broken links detected.</p>
             </div>`;
             return;
         }
 
         container.innerHTML = data.images.map((src, i) => `
             <img src="${proxify(src)}"
-                class="w-full md:max-w-3xl border-b border-gray-900/60"
-                loading="${i < 3 ? 'eager' : 'lazy'}"
+                class="w-full relative z-10 transition-opacity duration-500 opacity-0"
+                onload="this.classList.remove('opacity-0')"
+                loading="${i < 4 ? 'eager' : 'lazy'}"
                 onerror="this.style.display='none'">`
         ).join('');
 
-        // Navigation buttons
+        // Bottom Navigation UI
         if (data.prevUrl) {
-            const prevPath = `/read?url=${encodeURIComponent(data.prevUrl)}&title=ตอนก่อนหน้า`;
+            const prevPath = `/read?url=${encodeURIComponent(data.prevUrl)}&title=Previous`;
             navBottom.innerHTML += `<button onclick="navigate('${prevPath}')"
-                class="bg-gray-800 hover:bg-gray-700 px-6 py-2 rounded-full text-xs font-bold transition shadow-lg">
-                <i class="fas fa-chevron-left mr-2"></i>ตอนก่อนหน้า
+                class="glass hover:bg-white/10 px-6 py-3.5 rounded-2xl text-xs font-bold tracking-widest uppercase transition-all duration-300 hover:-translate-x-1 flex items-center gap-3">
+                <i class="fas fa-arrow-left opacity-70"></i> Prev Chapter
             </button>`;
         }
+        
         if (data.nextUrl) {
-            const nextPath = `/read?url=${encodeURIComponent(data.nextUrl)}&title=ตอนถัดไป`;
+            const nextPath = `/read?url=${encodeURIComponent(data.nextUrl)}&title=Next`;
             navBottom.innerHTML += `<button onclick="navigate('${nextPath}')"
-                class="bg-orange-600 hover:bg-orange-700 px-6 py-2 rounded-full text-xs font-bold transition shadow-lg">
-                ตอนถัดไป<i class="fas fa-chevron-right ml-2"></i>
+                class="bg-gradient-to-r from-primary to-secondary hover:brightness-110 px-8 py-3.5 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-[0_0_20px_rgba(255,69,0,0.3)] hover:-translate-y-1 flex items-center gap-3">
+                Next Chapter <i class="fas fa-arrow-right"></i>
             </button>`;
+            
             floatNext.classList.remove('hidden');
             floatNext.onclick = () => navigate(nextPath);
         }
     } catch (e) {
-        container.innerHTML = `<div class="mt-40 text-center px-4">
-            <i class="fas fa-times-circle text-5xl mb-4 text-red-500 block"></i>
-            <p class="text-red-400 font-bold text-lg mb-2">โหลดรูปภาพล้มเหลว</p>
-            <code class="text-xs text-gray-600 block max-w-sm mx-auto">${clean(e.message)}</code>
+        container.innerHTML = `<div class="mt-40 text-center px-4 max-w-md mx-auto animate-fade-in-up">
+            <div class="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6 border border-red-500/20">
+                <i class="fas fa-xmark text-4xl text-red-500"></i>
+            </div>
+            <h3 class="text-white font-black font-display text-xl mb-3">CONNECTION LOST</h3>
+            <code class="text-[10px] bg-black/50 p-3 rounded-lg block border border-red-900/30 text-gray-400 mb-6 truncate">${clean(e.message)}</code>
             <button onclick="renderReader('${url.replace(/'/g, "\\'")}', '${title.replace(/'/g, "\\'")}')"
-                class="mt-6 bg-orange-600 hover:bg-orange-700 px-8 py-2 rounded-full text-sm font-bold transition">
-                <i class="fas fa-redo mr-2"></i>ลองใหม่
+                class="w-full bg-white/5 hover:bg-primary border border-white/10 hover:border-primary px-6 py-3 rounded-2xl text-xs font-bold tracking-widest uppercase transition-all duration-300 group">
+                <i class="fas fa-rotate-right mr-2 group-hover:rotate-180 transition-transform duration-500"></i> Re-Establish Link
             </button>
         </div>`;
     }
