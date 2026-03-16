@@ -343,12 +343,13 @@ async function renderReader(url, title) {
 
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 35000); // 35s timeout
 
-        const nocache = url.includes('nocache=1') ? '&nocache=1' : '';
-        const fetchUrl = `${API}/manga/read?url=${encodeURIComponent(decodeURIComponent(url))}${nocache}`;
+        const cleanUrl = decodeURIComponent(url).split('?')[0]; 
+        const isForce = url.includes('nocache=1') ? '&nocache=1' : '';
+        const fetchUrl = `${API}/manga/read?url=${encodeURIComponent(cleanUrl)}${isForce}`;
         
-        console.log('[SpeedManga] Initiating fetch for:', url);
+        console.log('[SpeedManga] Initiating fetch for:', cleanUrl);
         const res = await fetch(fetchUrl, { signal: controller.signal });
         clearTimeout(timeoutId);
 

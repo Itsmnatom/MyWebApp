@@ -89,17 +89,18 @@ async function fetchHtml(url) {
                 devices: ['desktop'],
                 operatingSystems: ['windows']
             },
-            timeout: { request: 30000 }, // Increased to 30s for heavy pages
+            timeout: { request: 30000 }, 
             retry: { limit: 1 }
         });
         console.log(`[fetchHtml] Success [${response.statusCode}] for ${url.substring(0, 60)}...`);
         return response.body;
     } catch (error) {
-        console.error(`[fetchHtml] CRASH for ${url}:`, error.message);
-        if (error.response) {
-            console.error(`[fetchHtml] Status: ${error.response.statusCode}`);
-            // If we got a 404/500 from the TARGET site, we should report it clearly
+        // If it's a 404 or 403, it's not a server crash, but a target site issue
+        if (error.response && error.response.statusCode) {
+            console.error(`[fetchHtml] Target site returned ${error.response.statusCode} for ${url}`);
+            throw new Error(`Upstream site returned ${error.response.statusCode}`);
         }
+        console.error(`[fetchHtml] CRASH for ${url}:`, error.message);
         throw error;
     }
 }
@@ -356,8 +357,8 @@ app.get('/api/manga/read', async (req, res) => {
     }
 
     try {
-        if (!chapterUrl.startsWith('http')) throw new Error('Invalid chapter URL');
-        const html = await fetchHtml(chapterUrl);
+        const finalUrl = encodeURI(chapterUrl);
+        const html = await fetchHtml(finalUrl);
         const $ = cheerio.load(html);
 
         const scripts = $('script').map((_, e) => $(e).html()).get().join('\n');
@@ -371,53 +372,65 @@ app.get('/api/manga/read', async (req, res) => {
         if (mPrev) prevUrl = mPrev[1].replace(/\\\//g, '/');
         if (mNext) nextUrl = mNext[1].replace(/\\\//g, '/');
 
-        // Fallback to DOM if script fails or returns placeholder
+        // Fallbacks for navigation
         if (!prevUrl || prevUrl.includes('#')) {
             prevUrl = $('.prev_page, .nav-previous a, .nextprev a[rel="prev"], a.prev_page, .ch-prev-btn').attr('href') || null;
         }
         if (!nextUrl || nextUrl.includes('#')) {
             nextUrl = $('.next_page, .nav-next a, .nextprev a[rel="next"], a.next_page, .ch-next-btn').attr('href') || null;
         }
-
-        // Final Filter: No placeholders
         if (prevUrl && prevUrl.startsWith('#')) prevUrl = null;
         if (nextUrl && nextUrl.startsWith('#')) nextUrl = null;
 
-        // รูปแบบ 1: เก็บใน JSON ของ Theme
-        const m1 = scripts.match(/"images"\s*:\s*(\[[^\]]+\])/);
-        const m2 = scripts.match(/ts_reader\.run\(\s*(\{[\s\S]+?\})\s*\)/);
-        const m3 = scripts.match(/chapter_preloaded_images\s*=\s*(\[[\s\S]+?\])/);
+        let imageUrls = [];
 
-        if (m1) {
-            try { imageUrls = JSON.parse(m1[1]).map(u => u.replace(/\\\//g, '/').trim()); } catch (e) { }
-        } else if (m2) {
-            try { imageUrls = JSON.parse(m2[1]).sources[0].images; } catch (e) { }
-        } else if (m3) {
-            try { imageUrls = JSON.parse(m3[1]).map(i => typeof i === 'string' ? i : i.src); } catch (e) { }
+        // --- Logic 1: JSON Config (The cleanest way) ---
+        const mJson = scripts.match(/ts_reader\.run\(\s*(\{[\s\S]+?\})\s*\)/) 
+                   || scripts.match(/"images"\s*:\s*(\[[^\]]+\])/);
+
+        if (mJson) {
+            try {
+                const configStr = mJson[1] || mJson[0];
+                const cleanJson = configStr.startsWith('{') ? configStr : `{${configStr}}`;
+                const config = JSON.parse(configStr);
+                
+                if (config.sources && config.sources[0]?.images) {
+                    imageUrls = config.sources[0].images;
+                } else if (Array.isArray(config)) {
+                    imageUrls = config;
+                } else if (config.images) {
+                    imageUrls = config.images;
+                }
+            } catch (e) { console.warn('[API:READ] JSON Parse failed, falling back to DOM'); }
         }
 
-        // รูปแบบ 2: หาใน DOM
+        // --- Logic 2: Preloaded variables ---
         if (imageUrls.length === 0) {
-            $('.reading-content img, .wp-manga-chapter-img, #readerarea img, .page-break img, .chapter-content img').each((_, img) => {
-                const v = $(img).attr('data-src') || $(img).attr('data-lazy-src') || $(img).attr('data-cfsrc') || $(img).attr('src');
-                if (v && v.startsWith('http')) imageUrls.push(v);
+            const mPre = scripts.match(/chapter_preloaded_images\s*=\s*(\[[\s\S]+?\])/);
+            if (mPre) {
+                try { imageUrls = JSON.parse(mPre[1]).map(i => typeof i === 'string' ? i : i.src); } catch (e) { }
+            }
+        }
+
+        // --- Logic 3: DOM Scrape (The "Old Way" - most resilient) ---
+        if (imageUrls.length === 0) {
+            $('.reading-content img, .wp-manga-chapter-img, #readerarea img, .page-break img, .chapter-content img, .entry-content img').each((_, img) => {
+                const v = $(img).attr('data-src') || $(img).attr('data-lazy-src') || $(img).attr('data-cfsrc') || $(img).attr('src') || $(img).attr('data-original');
+                if (v && v.startsWith('http')) imageUrls.push(v.trim());
             });
         }
 
-        // กรองเอาเฉพาะรูปจริงๆ ลบ Banner/Logo ทิ้ง
-        imageUrls = [...new Set(imageUrls)].filter(
-            s => s && s.startsWith('http')
-                && !s.includes('/logo') && !s.includes('/banner')
-                && /\.(jpe?g|png|webp|gif)/i.test(s)
-        );
+        // Standardize URLs and filter junk
+        imageUrls = [...new Set(imageUrls)]
+            .filter(s => s && s.startsWith('http') && !s.includes('logo') && !s.includes('banner'))
+            .map(s => s.replace(/\\\//g, '/'));
 
         const data = { images: imageUrls, prevUrl, nextUrl };
         CACHE.read.set(chapterUrl, data, 60 * 60 * 1000);
         res.json(data);
     } catch (e) {
-        console.error(`[API:READ] Crash for ${chapterUrl}:`, e.message);
-        console.error(e.stack);
-        res.status(500).json({ error: e.message, stack: process.env.NODE_ENV === 'development' ? e.stack : undefined });
+        console.error(`[API:READ] CRASH for ${chapterUrl}:`, e.message);
+        res.status(500).json({ error: e.message });
     }
 });
 
