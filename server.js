@@ -89,6 +89,8 @@ async function fetchHtml(url) {
                 devices: ['desktop'],
                 operatingSystems: ['windows']
             },
+            http2: true,      // Multiplexing for speed
+            compressed: true, // Reduce bandwidth usage
             timeout: { request: 30000 }, 
             retry: { limit: 1 }
         });
