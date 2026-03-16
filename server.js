@@ -68,7 +68,10 @@ const CACHE = {
     read: new LRUCache(50),    // Reduced from 500
 };
 
-// Cache gotScraping import to avoid re-importing on every call
+// --- Optimization & Masking Config ---
+const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY || ''; // If provided, uses ScraperAPI.com (Free 5k/mo)
+const PROXY_URL = process.env.PROXY_URL || '';           // Generic Proxy URL support
+
 let _gotScraping = null;
 async function getGotScraping() {
     if (!_gotScraping) {
@@ -81,19 +84,33 @@ async function getGotScraping() {
 async function fetchHtml(url) {
     try {
         const gotScraping = await getGotScraping();
-        console.log('[SpeedManga] Initiating fetch for:', url);
-        // Correct call signature: gotScraping(url, options)
-        const response = await gotScraping(url, {
+        
+        let targetUrl = url;
+        let options = {
             headerGeneratorOptions: {
                 browsers: [{ name: 'chrome', minVersion: 115 }],
                 devices: ['desktop'],
                 operatingSystems: ['windows']
             },
-            http2: true,      // Multiplexing for speed
-            compressed: true, // Reduce bandwidth usage
+            http2: true,
             timeout: { request: 30000 }, 
             retry: { limit: 1 }
-        });
+        };
+
+        // 1. If ScraperAPI key is provided, route through it (Fastest Masking)
+        if (SCRAPER_API_KEY) {
+            targetUrl = `http://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(url)}`;
+            options.http2 = false; // ScraperAPI works better with http1
+            console.log('[SpeedManga] Masking through ScraperAPI...');
+        } 
+        // 2. Else if a Generic Proxy is provided
+        else if (PROXY_URL) {
+            options.proxyUrl = PROXY_URL;
+            console.log('[SpeedManga] Masking through Proxy:', PROXY_URL.substring(0, 20) + '...');
+        }
+
+        console.log('[SpeedManga] Initiating fetch for:', url);
+        const response = await gotScraping(targetUrl, options);
         console.log(`[fetchHtml] Success [${response.statusCode}] for ${url.substring(0, 60)}...`);
         return response.body;
     } catch (error) {
@@ -361,66 +378,54 @@ app.get('/api/manga/read', async (req, res) => {
     try {
         const finalUrl = encodeURI(chapterUrl);
         const html = await fetchHtml(finalUrl);
-        const $ = cheerio.load(html);
 
-        const scripts = $('script').map((_, e) => $(e).html()).get().join('\n');
-
-        // Extract Prev/Next from script if possible
+        // --- Faster Extraction: Raw Regex (Bypassing DOM if possible) ---
+        let imageUrls = [];
         let prevUrl = null;
         let nextUrl = null;
-        const mPrev = scripts.match(/"prevUrl"\s*:\s*"([^"]+)"/);
-        const mNext = scripts.match(/"nextUrl"\s*:\s*"([^"]+)"/);
-        
-        if (mPrev) prevUrl = mPrev[1].replace(/\\\//g, '/');
-        if (mNext) nextUrl = mNext[1].replace(/\\\//g, '/');
 
-        // Fallbacks for navigation
-        if (!prevUrl || prevUrl.includes('#')) {
-            prevUrl = $('.prev_page, .nav-previous a, .nextprev a[rel="prev"], a.prev_page, .ch-prev-btn').attr('href') || null;
-        }
-        if (!nextUrl || nextUrl.includes('#')) {
-            nextUrl = $('.next_page, .nav-next a, .nextprev a[rel="next"], a.next_page, .ch-next-btn').attr('href') || null;
-        }
-        if (prevUrl && prevUrl.startsWith('#')) prevUrl = null;
-        if (nextUrl && nextUrl.startsWith('#')) nextUrl = null;
-
-        let imageUrls = [];
-
-        // --- Logic 1: JSON Config (The cleanest way) ---
-        const mJson = scripts.match(/ts_reader\.run\(\s*(\{[\s\S]+?\})\s*\)/) 
-                   || scripts.match(/"images"\s*:\s*(\[[^\]]+\])/);
-
-        if (mJson) {
+        const mConfig = html.match(/ts_reader\.run\(\s*({[\s\S]+?})\s*\);/);
+        if (mConfig) {
             try {
-                const configStr = mJson[1] || mJson[0];
-                const cleanJson = configStr.startsWith('{') ? configStr : `{${configStr}}`;
-                const config = JSON.parse(configStr);
-                
-                if (config.sources && config.sources[0]?.images) {
-                    imageUrls = config.sources[0].images;
-                } else if (Array.isArray(config)) {
-                    imageUrls = config;
-                } else if (config.images) {
-                    imageUrls = config.images;
-                }
-            } catch (e) { console.warn('[API:READ] JSON Parse failed, falling back to DOM'); }
+                const config = JSON.parse(mConfig[1]);
+                if (config.sources?.[0]?.images) imageUrls = config.sources[0].images;
+                if (config.prevUrl) prevUrl = config.prevUrl.replace(/\\\//g, '/');
+                if (config.nextUrl) nextUrl = config.nextUrl.replace(/\\\//g, '/');
+            } catch (e) { console.warn('[API:READ] Regex JSON parse failed'); }
         }
 
-        // --- Logic 2: Preloaded variables ---
-        if (imageUrls.length === 0) {
-            const mPre = scripts.match(/chapter_preloaded_images\s*=\s*(\[[\s\S]+?\])/);
-            if (mPre) {
-                try { imageUrls = JSON.parse(mPre[1]).map(i => typeof i === 'string' ? i : i.src); } catch (e) { }
+        // --- Fallback & Tuning: Only use Cheerio if Regex missed something ---
+        if (imageUrls.length === 0 || !prevUrl || !nextUrl) {
+            const $ = cheerio.load(html);
+            const scripts = $('script').map((_, e) => $(e).html()).get().join('\n');
+
+            if (!prevUrl || prevUrl.includes('#')) {
+                prevUrl = $('.prev_page, .nav-previous a, .nextprev a[rel="prev"], a.prev_page, .ch-prev-btn').attr('href') || null;
+            }
+            if (!nextUrl || nextUrl.includes('#')) {
+                nextUrl = $('.next_page, .nav-next a, .nextprev a[rel="next"], a.next_page, .ch-next-btn').attr('href') || null;
+            }
+
+            if (imageUrls.length === 0) {
+                // Secondary JSON search
+                const mJson = scripts.match(/"images"\s*:\s*(\[[^\]]+\])/);
+                if (mJson) {
+                    try { imageUrls = JSON.parse(mJson[1]); } catch (e) {}
+                }
+                
+                // Final DOM Scrape
+                if (imageUrls.length === 0) {
+                    $('.reading-content img, .wp-manga-chapter-img, #readerarea img, .page-break img, .chapter-content img, .entry-content img').each((_, img) => {
+                        const v = $(img).attr('data-src') || $(img).attr('data-lazy-src') || $(img).attr('data-cfsrc') || $(img).attr('src') || $(img).attr('data-original');
+                        if (v && v.startsWith('http')) imageUrls.push(v.trim());
+                    });
+                }
             }
         }
 
-        // --- Logic 3: DOM Scrape (The "Old Way" - most resilient) ---
-        if (imageUrls.length === 0) {
-            $('.reading-content img, .wp-manga-chapter-img, #readerarea img, .page-break img, .chapter-content img, .entry-content img').each((_, img) => {
-                const v = $(img).attr('data-src') || $(img).attr('data-lazy-src') || $(img).attr('data-cfsrc') || $(img).attr('src') || $(img).attr('data-original');
-                if (v && v.startsWith('http')) imageUrls.push(v.trim());
-            });
-        }
+        // Clean up placeholders
+        if (prevUrl && prevUrl.startsWith('#')) prevUrl = null;
+        if (nextUrl && nextUrl.startsWith('#')) nextUrl = null;
 
         // Standardize URLs and filter junk
         imageUrls = [...new Set(imageUrls)]
