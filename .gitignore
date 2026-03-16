@@ -1,0 +1,13 @@
+# Dependency
+node_modules/
+
+# Environment variables (ห้ามเอาความลับขึ้น GitHub!)
+.env
+
+# Build folders
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
