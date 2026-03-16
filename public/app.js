@@ -272,8 +272,29 @@ async function renderDetail(url) {
             </div>`
         ).join('');
 
-        // Render Chapters List (Optimized for speed)
+        // Render Chapters List & Quick Actions
+        const qaEl = document.getElementById('d-quick-actions');
+        qaEl.innerHTML = '';
+
         if (d.chapters?.length > 0) {
+            const firstCh = [...d.chapters].sort((a, b) => a.num - b.num)[0];
+            const lastCh = [...d.chapters].sort((a, b) => b.num - a.num)[0];
+
+            if (firstCh) {
+                qaEl.innerHTML += `
+                <button onclick="navigate('/read?url=${encodeURIComponent(firstCh.url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(firstCh.name)}`)}')"
+                    class="bg-white/10 hover:bg-white/20 border border-white/10 px-6 py-3 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 flex items-center gap-3">
+                    <i class="fas fa-play text-primary"></i> Read First
+                </button>`;
+            }
+            if (lastCh && lastCh !== firstCh) {
+                qaEl.innerHTML += `
+                <button onclick="navigate('/read?url=${encodeURIComponent(lastCh.url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(lastCh.name)}`)}')"
+                    class="bg-gradient-to-r from-primary to-secondary hover:brightness-110 px-8 py-3 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-[0_0_20px_rgba(255,69,0,0.3)] hover:-translate-y-1 flex items-center gap-3">
+                    Read Latest <i class="fas fa-bolt text-white/80"></i>
+                </button>`;
+            }
+
             chaptersEl.innerHTML = d.chapters.map((c, i) => {
                 const readPath = `/read?url=${encodeURIComponent(c.url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(c.name)}`)}`;
                 return `<button onclick="navigate('${readPath}')"
