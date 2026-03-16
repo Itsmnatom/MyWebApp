@@ -208,7 +208,7 @@ app.get('/api/manga/home', async (req, res) => {
         const result = await scrapeHome(page);
 
         if (result.updates.length > 0) {
-            CACHE.home.set(cacheKey, result, 5 * 60 * 1000);
+            CACHE.home.set(cacheKey, result, 10 * 60 * 1000); // 10 mins
         }
 
         res.json(result);
@@ -302,7 +302,9 @@ app.get('/api/manga/details', async (req, res) => {
         chapters.sort((a, b) => b.num - a.num);
         const data = { title, image, synopsis, info, chapters };
 
-        CACHE.details.set(url, data, 30 * 60 * 1000);
+        if (data.chapters && data.chapters.length > 0) {
+            CACHE.details.set(url, data, 60 * 60 * 1000); // 1 hour
+        }
         res.json(data);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });

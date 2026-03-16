@@ -258,14 +258,13 @@ async function renderDetail(url) {
             </div>`
         ).join('');
 
-        // Render Chapters List
+        // Render Chapters List (Optimized for speed)
         if (d.chapters?.length > 0) {
             chaptersEl.innerHTML = d.chapters.map((c, i) => {
                 const readPath = `/read?url=${encodeURIComponent(c.url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(c.name)}`)}`;
                 return `<button onclick="navigate('${readPath}')"
-                    class="w-full relative overflow-hidden glass hover:bg-white/10 p-4 rounded-2xl text-left transition-all duration-300 flex justify-between items-center group animate-fade-in-up border border-white/5 hover:border-primary/50"
-                    style="animation-delay: ${Math.min(i * 0.02, 0.5)}s">
-                    <div class="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-primary to-secondary transform scale-x-0 origin-left group-hover:scale-x-100 transition-transform duration-300"></div>
+                    class="w-full relative overflow-hidden glass hover:bg-white/10 p-4 rounded-2xl text-left transition-all duration-200 flex justify-between items-center group border border-white/5 hover:border-primary/50">
+                    <div class="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-primary to-secondary transform scale-x-0 origin-left group-hover:scale-x-100 transition-transform duration-200"></div>
                     <div class="flex items-center gap-3 min-w-0 pr-2">
                         <div class="w-8 h-8 rounded-full bg-dark-800 border border-white/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary group-hover:border-primary transition-colors">
                             <i class="fas fa-book-open text-[10px] text-gray-400 group-hover:text-white"></i>
