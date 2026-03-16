@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Dependency
 node_modules/
 
@@ -11,3 +12,6 @@ build/
 # OS files
 .DS_Store
 Thumbs.db
+=======
+node_modules
+>>>>>>> 44ad5e9 (chore: remove node_modules from repository)
