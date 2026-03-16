@@ -16,7 +16,7 @@
 
 const express = require('express');
 const cors = require('cors');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 const path = require('path');
 
 const app = express();
@@ -69,8 +69,17 @@ const pagePool = [];
 
 async function getBrowser() {
     if (!sharedBrowser || !sharedBrowser.connected) {
+        // ใช้ PUPPETEER_EXECUTABLE_PATH จาก Environment (สำหรับ Render/Docker)
+        // หรือใช้ path เริ่มต้นของ Chrome บน Linux/Mac/Windows ถ้าไม่มี
+        const defaultPath = process.platform === 'win32'
+            ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+            : process.platform === 'darwin'
+                ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+                : '/usr/bin/google-chrome-stable';
+
         sharedBrowser = await puppeteer.launch({
             headless: 'new',
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || defaultPath,
             args: [
                 '--no-sandbox', '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage', '--disable-gpu',
