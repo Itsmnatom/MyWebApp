@@ -112,74 +112,63 @@ function filterAndSort(items) {
 }
 
 // ══════════════════════════════════════════════════
-//  SCRAPING LOGIC (Cheerio)
+//  SCRAPING LOGIC (Cheerio) — Single Fetch for Home
 // ══════════════════════════════════════════════════
 
-async function scrapePopular() {
-    const html = await fetchHtml(TARGET_SITE);
-    const $ = cheerio.load(html);
-    const items = [];
-    const seen = new Set();
-
-    // .listupd .bs = internal featured manga on speed-manga.net (confirmed 7 items)
-    $('.listupd .bs').each((_, el) => {
-        const url = $(el).find('a').first().attr('href');
-        if (!url || seen.has(url)) return;
-        seen.add(url);
-
-        // Title is in h3 text (confirmed from structure analysis)
-        const title = $(el).find('h3').first().text().trim()
-            || $(el).find('a').first().attr('title') || '';
-        if (!title) return;
-
-        const imgEl = $(el).find('img').first();
-        const image = imgEl.attr('data-src') || imgEl.attr('data-lazy-src') || imgEl.attr('data-cfsrc') || imgEl.attr('src') || '';
-        const lastChapter = $(el).find('.epxs, .chapter, .eph-num a').first().text().trim() || 'Latest';
-        const badge = $(el).find('.limit, .type, .manga-title-badges').first().text().trim() || '';
-
-        items.push({ title, image, lastChapter, url, badge });
-    });
-
-    return filterAndSort(items).slice(0, 14);
-}
-
-async function scrapeUpdates(page) {
+/**
+ * Scrape home page — fetch ONCE and extract both popular + updates.
+ * This prevents stale cache issues when popular/updates are fetched independently.
+ */
+async function scrapeHome(page) {
     const fetchUrl = page === 1 ? TARGET_SITE : `${TARGET_SITE}page/${page}/`;
     const html = await fetchHtml(fetchUrl);
     const $ = cheerio.load(html);
-    const items = [];
+    const popular = [];
+    const updates = [];
     const seen = new Set();
 
-    // .listupd .bs = all listing items on speed-manga.net (internal links only)
-    // Affiliate .utao items point to external domains — we skip them
+    // Helper to extract chapter URL/name from .adds a links inside .bs item
+    const extractChapters = (el) => {
+        const chapters = [];
+        $(el).find('.adds a').each((idx, a) => {
+            if (idx >= 2) return;
+            const chUrl = $(a).attr('href');
+            const chName = $(a).find('.epxs').text().trim() || $(a).text().trim();
+            // Skip if name is only a number (rating score like "7.00", "6.8")
+            const isRating = /^\d+\.?\d*$/.test(chName);
+            if (chUrl && chName && !isRating) {
+                chapters.push({ name: chName, url: chUrl, time: 'NEW' });
+            }
+        });
+        return chapters;
+    };
+
     $('.listupd .bs').each((_, el) => {
         const url = $(el).find('a').first().attr('href');
         if (!url || seen.has(url)) return;
         seen.add(url);
 
-        // Title is inside .tt div (confirmed from HTML dump)
         const title = $(el).find('.tt').first().text().trim()
             || $(el).find('a').first().attr('title') || '';
         if (!title) return;
 
         const imgEl = $(el).find('img').first();
         const image = imgEl.attr('data-src') || imgEl.attr('data-lazy-src') || imgEl.attr('data-cfsrc') || imgEl.attr('src') || '';
-        const badge = $(el).find('.limit .colored, .colored').first().text().trim()
+        const lastChapter = $(el).find('.adds a .epxs').first().text().trim() || 'Latest';
+        const badge = $(el).find('.colored').first().text().trim()
             || $(el).find('.limit, .type, .manga-title-badges').first().text().trim() || '';
 
-        const chapters = [];
-        // chapters are in .adds as direct anchor links with .epxs text
-        $(el).find('.adds a').each((idx, a) => {
-            if (idx >= 2) return;
-            const chUrl = $(a).attr('href');
-            const chName = $(a).find('.epxs').text().trim() || $(a).text().trim();
-            if (chUrl && chName) chapters.push({ name: chName, url: chUrl, time: 'NEW' });
-        });
+        const chapters = extractChapters(el);
 
-        items.push({ title, image, url, badge, chapters });
+        // Popular = featured items (same set — used as both popular & update list)
+        popular.push({ title, image, lastChapter, url, badge });
+        updates.push({ title, image, url, badge, chapters });
     });
 
-    return items;
+    return {
+        popular: filterAndSort(popular).slice(0, 14),
+        updates: filterAndSort(updates)
+    };
 }
 
 // ══════════════════════════════════════════════════
@@ -187,22 +176,22 @@ async function scrapeUpdates(page) {
 // ══════════════════════════════════════════════════
 app.get('/api/manga/home', async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
-    const cacheKey = `updates_${page}`;
+    const cacheKey = `home_${page}`;
 
     try {
-        const cachedUpdates = CACHE.home.get(cacheKey);
+        const cached = CACHE.home.get(cacheKey);
+        if (cached) return res.json(cached);
 
-        const [popular, updatesRaw] = await Promise.all([
-            page === 1 ? scrapePopular().catch(e => { console.error('popular err:', e.message); return []; }) : Promise.resolve([]),
-            cachedUpdates ? Promise.resolve(cachedUpdates) : scrapeUpdates(page).catch(e => { console.error('updates err:', e.message); return []; }),
-        ]);
+        const result = await scrapeHome(page);
 
-        const updates = cachedUpdates || filterAndSort(updatesRaw);
-        if (!cachedUpdates && updates.length > 0) CACHE.home.set(cacheKey, updates, 5 * 60 * 1000);
+        if (result.updates.length > 0) {
+            CACHE.home.set(cacheKey, result, 5 * 60 * 1000);
+        }
 
-        res.json({ popular, updates });
+        res.json(result);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 
 // ══════════════════════════════════════════════════
 //  API: MANGA DETAILS
