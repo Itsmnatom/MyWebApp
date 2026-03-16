@@ -191,6 +191,35 @@
             </div>
         </div>
 
+        <!-- History & Bookmarks Sections -->
+        <div class="container mx-auto px-4 md:px-6 mb-12 flex flex-col gap-12">
+            <!-- Continue Reading -->
+            <div id="history-section" class="hidden">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-1.5 h-7 bg-primary rounded-full"></div>
+                    <h2 class="text-xl font-bold tracking-tight uppercase font-display flex items-center gap-2">
+                        Continue <span class="text-gradient">Reading</span>
+                    </h2>
+                </div>
+                <div id="history-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <!-- History cards injected here -->
+                </div>
+            </div>
+
+            <!-- Bookmarks -->
+            <div id="bookmarks-section" class="hidden">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-1.5 h-7 bg-blue-500 rounded-full"></div>
+                    <h2 class="text-xl font-bold tracking-tight uppercase font-display flex items-center gap-2">
+                        My <span class="text-blue-500">Bookmarks</span>
+                    </h2>
+                </div>
+                <div id="bookmarks-container" class="flex gap-4 overflow-x-auto hide-scrollbar pb-4 snap-x snap-mandatory">
+                    <!-- Bookmark cards injected here -->
+                </div>
+            </div>
+        </div>
+
         <!-- Latest Updates Section -->
         <div class="container mx-auto px-4 md:px-6">
             <div class="flex items-center justify-between mb-8">

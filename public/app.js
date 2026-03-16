@@ -46,6 +46,65 @@ function getBadgeUI(badge) {
     </div>`;
 }
 
+// ══════════════════════════════════════════════════
+//  PERSISTENCE (Bookmarks & History)
+// ══════════════════════════════════════════════════
+
+let BOOKMARKS = JSON.parse(localStorage.getItem('sm_bookmarks') || '[]');
+let HISTORY = JSON.parse(localStorage.getItem('sm_history') || '[]');
+let READ_CHAPTERS = JSON.parse(localStorage.getItem('sm_read_chapters') || '[]');
+
+function saveState() {
+    localStorage.setItem('sm_bookmarks', JSON.stringify(BOOKMARKS.slice(0, 50)));
+    localStorage.setItem('sm_history', JSON.stringify(HISTORY.slice(0, 15)));
+    localStorage.setItem('sm_read_chapters', JSON.stringify(READ_CHAPTERS.slice(0, 500)));
+}
+
+function toggleBookmark(manga) {
+    const idx = BOOKMARKS.findIndex(b => b.url === manga.url);
+    if (idx > -1) BOOKMARKS.splice(idx, 1);
+    else BOOKMARKS.unshift({ title: manga.title, url: manga.url, image: manga.image, lastChapter: manga.lastChapter });
+    saveState();
+    if (document.getElementById('detail-view').classList.contains('hidden') === false) {
+        renderBookmarkBtn(manga.url);
+    }
+}
+
+function addToHistory(manga, chapter) {
+    // manga: { title, url, image }, chapter: { name, url }
+    const entry = {
+        title: manga.title,
+        mangaUrl: manga.url,
+        image: manga.image,
+        chapterName: chapter.name,
+        chapterUrl: chapter.url,
+        time: Date.now()
+    };
+    HISTORY = [entry, ...HISTORY.filter(h => h.mangaUrl !== manga.url)].slice(0, 15);
+    
+    // Also track as read chapter
+    if (chapter.url && !READ_CHAPTERS.includes(chapter.url)) {
+        READ_CHAPTERS.unshift(chapter.url);
+    }
+    
+    saveState();
+}
+
+function renderBookmarkBtn(mangaUrl) {
+    const isBookmarked = BOOKMARKS.some(b => b.url === mangaUrl);
+    const qaEl = document.getElementById('d-quick-actions');
+    const existingBtn = document.getElementById('btn-bookmark');
+    
+    const btnHtml = `
+        <button id="btn-bookmark" onclick="handleBookmarkToggle()" 
+            class="${isBookmarked ? 'bg-blue-600' : 'bg-white/10 hover:bg-white/20'} border border-white/10 px-6 py-3 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 flex items-center gap-3">
+            <i class="fa${isBookmarked ? 's' : 'r'} fa-bookmark"></i> ${isBookmarked ? 'Bookmarked' : 'Bookmark'}
+        </button>`;
+
+    if (existingBtn) existingBtn.outerHTML = btnHtml;
+    else qaEl.insertAdjacentHTML('afterbegin', btnHtml);
+}
+
 function skeletonCards(count = 4, className = 'h-64') {
     return Array(count).fill(0).map((_, i) =>
         `<div class="skeleton ${className} rounded-2xl animate-pulse" style="animation-delay: ${i * 0.1}s"></div>`
@@ -105,9 +164,52 @@ async function handleLocation() {
                     displayHome(data, 1, true); // display with 'fromCache' flag
                 } catch(e) {}
             }
+            renderLocalSections();
         }
         await renderHome(page);
     }
+}
+
+function renderLocalSections() {
+    const hSection = document.getElementById('history-section');
+    const bSection = document.getElementById('bookmarks-section');
+    const hContainer = document.getElementById('history-container');
+    const bContainer = document.getElementById('bookmarks-container');
+
+    // History
+    if (HISTORY.length > 0) {
+        hSection.classList.remove('hidden');
+        hContainer.innerHTML = HISTORY.map(h => `
+            <div onclick="navigate('/read?url=${encodeURIComponent(h.chapterUrl)}&title=${encodeURIComponent(`${clean(h.title)} - ${clean(h.chapterName)}`)}')"
+                class="glass-card rounded-2xl overflow-hidden group cursor-pointer flex p-3 gap-4 border border-white/5 active:scale-95 transition-all duration-300 shadow-lg">
+                <div class="relative flex-shrink-0 w-16 aspect-[2/3] overflow-hidden rounded-xl border border-white/5">
+                    <img src="${proxify(h.image)}" class="w-full h-full object-cover bg-dark-800" loading="lazy">
+                </div>
+                <div class="flex flex-col justify-center min-w-0 flex-1">
+                    <h3 class="text-xs font-bold font-display line-clamp-1 group-hover:text-primary transition-colors">${clean(h.title)}</h3>
+                    <p class="text-[10px] text-primary font-black uppercase tracking-wider mt-1 mb-2">Resume: ${clean(h.chapterName)}</p>
+                    <div class="flex items-center gap-2 text-[9px] text-gray-500 font-bold uppercase">
+                        <i class="far fa-clock"></i> <span>Recent</span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } else hSection.classList.add('hidden');
+
+    // Bookmarks
+    if (BOOKMARKS.length > 0) {
+        bSection.classList.remove('hidden');
+        bContainer.innerHTML = BOOKMARKS.map(b => `
+            <div onclick="navigate('/manga?url=${encodeURIComponent(b.url)}')" 
+                class="flex-none w-32 md:w-40 group cursor-pointer snap-start">
+                <div class="relative overflow-hidden rounded-2xl aspect-[2/3] mb-2 shadow-xl border border-white/5 group-hover:border-blue-500/50 transition-all">
+                    <img src="${proxify(b.image)}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 bg-dark-800" loading="lazy">
+                    <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-transparent to-transparent opacity-60"></div>
+                </div>
+                <h3 class="text-[10px] md:text-xs font-bold font-display line-clamp-1 group-hover:text-blue-400 text-center px-1">${clean(b.title)}</h3>
+            </div>
+        `).join('');
+    } else bSection.classList.add('hidden');
 }
 
 // ══════════════════════════════════════════════════
@@ -263,38 +365,46 @@ async function renderDetail(url) {
         const qaEl = document.getElementById('d-quick-actions');
         qaEl.innerHTML = '';
 
+        // Global function for bookmark button
+        window.currentManga = { title: d.title, url, image: d.image, lastChapter: d.chapters?.[0]?.name || '' };
+        window.handleBookmarkToggle = () => toggleBookmark(window.currentManga);
+        renderBookmarkBtn(url);
+
         if (d.chapters?.length > 0) {
             const firstCh = [...d.chapters].sort((a, b) => a.num - b.num)[0];
             const lastCh = [...d.chapters].sort((a, b) => b.num - a.num)[0];
 
             if (firstCh) {
+                const isFirstRead = READ_CHAPTERS.includes(firstCh.url);
                 qaEl.innerHTML += `
                 <button onclick="navigate('/read?url=${encodeURIComponent(firstCh.url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(firstCh.name)}`)}')"
-                    class="bg-white/10 hover:bg-white/20 border border-white/10 px-6 py-3 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 flex items-center gap-3">
-                    <i class="fas fa-play text-primary"></i> Read First
+                    class="${isFirstRead ? 'bg-primary/20 border-primary' : 'bg-white/10 hover:bg-white/20 border-white/10'} border px-6 py-3 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 flex items-center gap-3">
+                    <i class="fas fa-play text-primary"></i> ${isFirstRead ? 'Read Again' : 'Read First'}
                 </button>`;
             }
             if (lastCh && lastCh !== firstCh) {
+                const isLastRead = READ_CHAPTERS.includes(lastCh.url);
                 qaEl.innerHTML += `
                 <button onclick="navigate('/read?url=${encodeURIComponent(lastCh.url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(lastCh.name)}`)}')"
                     class="bg-gradient-to-r from-primary to-secondary hover:brightness-110 px-8 py-3 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-[0_0_20px_rgba(255,69,0,0.3)] hover:-translate-y-1 flex items-center gap-3">
-                    Read Latest <i class="fas fa-bolt text-white/80"></i>
+                    ${isLastRead ? 'Review Latest' : 'Read Latest'} <i class="fas fa-bolt text-white/80"></i>
                 </button>`;
             }
 
             if (d.chapters && d.chapters.length > 0) {
                 chaptersEl.innerHTML = d.chapters.map((c, i) => {
+                    const isRead = READ_CHAPTERS.includes(c.url);
                     const readPath = `/read?url=${encodeURIComponent(c.url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(c.name)}`)}`;
                     return `<button onclick="navigate('${readPath}')"
-                        class="w-full relative overflow-hidden glass hover:bg-white/10 p-4 rounded-2xl text-left transition-all duration-200 flex justify-between items-center group border border-white/5 hover:border-primary/50">
-                        <div class="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-primary to-secondary transform scale-x-0 origin-left group-hover:scale-x-100 transition-transform duration-200"></div>
+                        class="w-full relative overflow-hidden glass hover:bg-white/10 p-4 rounded-2xl text-left transition-all duration-200 flex justify-between items-center group border ${isRead ? 'border-primary/40 bg-primary/5' : 'border-white/5 hover:border-primary/50'}">
+                        <div class="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-primary to-secondary transform ${isRead ? 'scale-x-100' : 'scale-x-0'} origin-left group-hover:scale-x-100 transition-transform duration-200"></div>
                         <div class="flex items-center gap-3 min-w-0 pr-2">
-                            <div class="w-8 h-8 rounded-full bg-dark-800 border border-white/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary group-hover:border-primary transition-colors">
-                                <i class="fas fa-book-open text-[10px] text-gray-400 group-hover:text-white"></i>
+                            <div class="w-8 h-8 rounded-full ${isRead ? 'bg-primary border-primary' : 'bg-dark-800 border-white/10'} border flex items-center justify-center flex-shrink-0 group-hover:bg-primary group-hover:border-primary transition-colors">
+                                <i class="fas ${isRead ? 'fa-check text-white' : 'fa-book-open text-gray-400 group-hover:text-white'} text-[10px]"></i>
                             </div>
-                            <span class="font-bold text-sm text-gray-200 group-hover:text-white truncate">${clean(c.name)}</span>
+                            <span class="font-bold text-sm ${isRead ? 'text-primary' : 'text-gray-200'} group-hover:text-white truncate">${clean(c.name)}</span>
                         </div>
-                        <span class="text-[10px] font-bold tracking-widest uppercase opacity-40 group-hover:opacity-100 group-hover:text-primary transition-colors flex-shrink-0 whitespace-nowrap pl-2">${clean(c.time)}</span>
+                        <span class="text-[10px] font-bold tracking-widest uppercase ${isRead ? 'text-primary' : 'opacity-40'} group-hover:opacity-100 group-hover:text-primary transition-colors flex-shrink-0 whitespace-nowrap pl-2">${clean(c.time)}</span>
                     </button>`;
                 }).join('');
             } else {
@@ -348,6 +458,14 @@ async function renderReader(url, title) {
         if (!res.ok) throw new Error(`HTTP ${res.status} [Link Unstable]`);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
+
+        // Update History
+        if (data.images?.length > 0) {
+            const mangaTitle = title.split(' - ')[0] || title;
+            // Best effort to find mangaUrl from history or current path
+            const mangaUrl = new URLSearchParams(window.location.search).get('url');
+            addToHistory({ title: mangaTitle, url: mangaUrl, image: data.images[0] }, { name: title.split(' - ')[1] || 'Chapter', url: mangaUrl });
+        }
 
         if (!data.images?.length) {
             container.innerHTML = `<div class="mt-40 text-center px-4 animate-fade-in-up">
