@@ -54,9 +54,9 @@ class LRUCache {
 }
 
 const CACHE = {
-    home: new LRUCache(20),
-    details: new LRUCache(200),
-    read: new LRUCache(500),
+    home: new LRUCache(10),    // Reduced from 20
+    details: new LRUCache(50), // Reduced from 200
+    read: new LRUCache(50),    // Reduced from 500
 };
 
 // Cache gotScraping import to avoid re-importing on every call
@@ -246,10 +246,17 @@ app.get('/api/manga/details', async (req, res) => {
             .filter(t => t.length > 20).join('\n\n') || 'ไม่มีเรื่องย่อ';
 
         const info = {};
-        $('.post-content_item').each((_, el) => {
-            const label = $(el).find('.summary-heading h5').text().replace(':', '').trim();
-            const value = $(el).find('.summary-content').text().trim();
-            if (label && value) info[label] = value;
+        $('.imptdt').each((_, el) => {
+            const text = $(el).text().trim();
+            // Structure is usually "Label <i>Value</i>" or similar
+            const label = $(el).contents().filter((_, node) => node.nodeType === 3).text().trim()
+                || $(el).find('b, span').first().text().trim();
+            const value = $(el).find('i, a, span:last-child').first().text().trim();
+            
+            if (label && value && label.length < 30) {
+                const cleanLabel = label.replace(':', '').trim();
+                if (cleanLabel) info[cleanLabel] = value;
+            }
         });
 
         // Chapters: #chapterlist ul li → .eph-num a → .chapternum (name) + .chapterdate (time)
