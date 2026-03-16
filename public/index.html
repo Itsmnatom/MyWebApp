@@ -14,131 +14,22 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="dns-prefetch" href="https://speed-manga.net">
     
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&family=Outfit:wght@700;900&display=swap" rel="stylesheet">
-    
+
     <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Kanit', 'sans-serif'],
-                        display: ['Outfit', 'sans-serif'],
-                    },
-                    colors: {
-                        primary: '#FF4500', // Vibrant Orange/Red
-                        secondary: '#FF8C00',
-                        dark: {
-                            900: '#050505',
-                            800: '#121212',
-                            700: '#1E1E1E',
-                            600: '#2A2A2A',
-                        }
-                    },
-                    animation: {
-                        'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
-                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                    },
-                    keyframes: {
-                        fadeInUp: {
-                            '0%': { opacity: '0', transform: 'translateY(20px)' },
-                            '100%': { opacity: '1', transform: 'translateY(0)' },
-                        }
-                    }
-                }
-            }
+        // Service Worker Registration for Instant Load
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(reg => {
+                    console.log('[SW] Registered successfully');
+                }).catch(err => {
+                    console.error('[SW] Registration failed:', err);
+                });
+            });
         }
     </script>
-    
-    <style>
-        /* Base Styling */
-        body {
-            background-color: #050505;
-            color: #F3F4F6;
-            margin: 0;
-            overflow-x: hidden;
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(255, 69, 0, 0.03) 0%, transparent 50%),
-                radial-gradient(circle at 85% 30%, rgba(255, 140, 0, 0.03) 0%, transparent 50%);
-            background-attachment: fixed;
-        }
-
-        /* Glassmorphism Utilities — Optimized for FPS */
-        .glass {
-            background: rgba(18, 18, 18, 0.75);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transform: translateZ(0); /* Hardware Acceleration */
-            will-change: transform;
-        }
-        
-        .glass-card {
-            background: rgba(30, 30, 30, 0.45);
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255, 255, 255, 0.03);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-            will-change: transform, opacity;
-        }
-
-        /* Text Gradients */
-        .text-gradient {
-            background: linear-gradient(135deg, #FF4500 0%, #FF8C00 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            will-change: filter;
-        }
-
-        /* Skeleton Loader */
-        .skeleton {
-            background: linear-gradient(90deg, #1A1A1A 25%, #2A2A2A 50%, #1A1A1A 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite;
-            border-radius: 0.75rem;
-        }
-        @keyframes shimmer {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #050505; }
-        ::-webkit-scrollbar-thumb {
-            background: #FF4500;
-            border-radius: 10px;
-            border: 2px solid #050505;
-        }
-        ::-webkit-scrollbar-thumb:hover { background: #FF8C00; }
-
-        /* General Utilities */
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .line-clamp-5 { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
-
-        /* Reader Customization */
-        .reader-image-container img {
-            max-width: 100%;
-            width: 100%;
-            display: block;
-            margin: 0;
-            background-color: #0A0A0A;
-            min-height: 400px;
-        }
-        
-        @media (min-width: 768px) {
-            .reader-image-container img {
-                width: 80%;
-                max-width: 900px;
-                box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-                margin: 0 auto;
-            }
-        }
-    </style>
 </head>
 
 <body class="antialiased selection:bg-primary selection:text-white">
@@ -146,17 +37,17 @@
     <!-- ============================================
          NAVIGATION (Glassmorphism)
     ============================================ -->
-    <nav id="main-header" class="glass sticky top-0 z-50 transition-all duration-300">
-        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
-            <a href="javascript:navigate('/')" class="font-display text-2xl md:text-3xl font-black tracking-tighter hover:scale-105 transition-transform duration-300">
+    <nav id="main-header" class="glass sticky top-0 z-50">
+        <div class="container py-4 flex justify-between items-center">
+            <a href="javascript:navigate('/')" class="font-display text-2xl md:text-3xl font-black tracking-tighter">
                 SPEED<span class="text-gradient">MANGA</span>
             </a>
-            <div class="flex items-center gap-3 bg-dark-800/80 border border-white/5 px-4 py-1.5 rounded-full shadow-inner">
+            <div class="flex items-center gap-3 bg-dark-800 border px-4 py-2 rounded-full">
                 <div class="relative flex h-2.5 w-2.5">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                  <span class="animate-ping absolute inset-0 rounded-full bg-green-400 opacity-75"></span>
+                  <span class="relative rounded-full h-2.5 w-2.5 bg-green-500"></span>
                 </div>
-                <span class="text-[10px] md:text-xs font-bold tracking-wider text-gray-300 uppercase mt-0.5">Engine v4</span>
+                <span class="text-xs font-bold tracking-widest text-gray-400 uppercase">Engine v5</span>
             </div>
         </div>
     </nav>
@@ -164,60 +55,51 @@
     <!-- ============================================
          HOME VIEW
     ============================================ -->
-    <div id="home-view" class="hidden min-h-screen pb-20">
+    <div id="home-view" class="hidden pb-20">
         
         <!-- Hero / Popular Section -->
-        <div id="popular-section" class="relative pt-8 pb-12 mb-8">
-            <div class="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none"></div>
-            <div class="container mx-auto px-4 md:px-6 relative z-10">
-                <div class="flex items-center gap-3 mb-8">
-                    <div class="w-1.5 h-8 bg-gradient-to-b from-primary to-secondary rounded-full"></div>
-                    <h2 class="text-2xl md:text-3xl font-black tracking-tight drop-shadow-lg uppercase font-display">
+        <div id="popular-section" class="relative py-8 mb-8">
+            <div class="absolute inset-0 bg-gradient-to-b opacity-5 pointer-events-none"></div>
+            <div class="container relative z-10">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="bg-primary rounded-full" style="width:6px; height:32px;"></div>
+                    <h2 class="text-2xl md:text-3xl font-black tracking-tight uppercase font-display">
                         Trending <span class="text-gradient">Now</span>
                     </h2>
                 </div>
                 
-                <!-- Horizontal Scroll for Popular -->
-                <div class="relative group">
-                    <div id="popular-container" class="flex gap-4 md:gap-6 overflow-x-auto hide-scrollbar pb-8 snap-x snap-mandatory px-2">
-                        <!-- Skeletons -->
-                        <div class="skeleton w-40 md:w-56 h-60 md:h-80 flex-none rounded-2xl"></div>
-                        <div class="skeleton w-40 md:w-56 h-60 md:h-80 flex-none rounded-2xl"></div>
-                        <div class="skeleton w-40 md:w-56 h-60 md:h-80 flex-none rounded-2xl"></div>
-                        <div class="skeleton w-40 md:w-56 h-60 md:h-80 flex-none rounded-2xl"></div>
-                        <div class="skeleton w-40 md:w-56 h-60 md:h-80 flex-none rounded-2xl"></div>
-                    </div>
+                <div id="popular-container" class="flex gap-4 overflow-x-auto hide-scrollbar pb-8 px-2">
+                    <!-- Skeletons -->
+                    <div class="skeleton rounded-2xl" style="width:200px; height:300px; flex-shrink:0;"></div>
+                    <div class="skeleton rounded-2xl" style="width:200px; height:300px; flex-shrink:0;"></div>
+                    <div class="skeleton rounded-2xl" style="width:200px; height:300px; flex-shrink:0;"></div>
                 </div>
             </div>
         </div>
 
         <!-- Latest Updates Section -->
-        <div class="container mx-auto px-4 md:px-6">
-            <div class="flex items-center justify-between mb-8">
-                <div class="flex items-center gap-3">
-                    <div class="w-1.5 h-8 bg-dark-700 rounded-full"></div>
-                    <h2 class="text-xl md:text-2xl font-bold tracking-tight uppercase font-display">
-                        Latest Releases
-                    </h2>
-                </div>
+        <div class="container">
+            <div class="flex items-center gap-4 mb-12">
+                <div class="bg-dark-700 rounded-full" style="width:6px; height:32px;"></div>
+                <h2 class="text-xl md:text-2xl font-bold tracking-tight uppercase font-display">
+                    Latest Releases
+                </h2>
             </div>
 
-            <div id="updates-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+            <div id="updates-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <!-- Updates injected here -->
             </div>
 
             <!-- Pagination -->
-            <div id="pagination" class="flex justify-center items-center gap-3 md:gap-6 mt-16">
-                <button id="btn-prev" class="glass hover:bg-white/10 px-5 md:px-8 py-3 rounded-2xl font-bold transition-all duration-300 hidden hover:-translate-x-1 flex items-center gap-2">
-                    <i class="fas fa-arrow-left text-sm opacity-70"></i> Prev
+            <div id="pagination" class="flex justify-center items-center gap-6 mt-16">
+                <button id="btn-prev" class="glass px-8 py-3 rounded-2xl font-bold hidden flex items-center gap-2">
+                    <i class="fas fa-arrow-left"></i> Prev
                 </button>
-                <div class="glass-card px-6 py-3 rounded-2xl border-white/10 shadow-[0_0_20px_rgba(255,69,0,0.1)]">
-                    <span id="page-indicator" class="text-primary font-black text-lg md:text-xl font-display">
-                        PAGE 1
-                    </span>
+                <div class="glass-card px-8 py-3 rounded-2xl border">
+                    <span id="page-indicator" class="text-primary font-black text-xl font-display">PAGE 1</span>
                 </div>
-                <button id="btn-next" class="bg-gradient-to-r from-primary to-secondary hover:from-secondary hover:to-primary px-5 md:px-8 py-3 rounded-2xl font-bold transition-all duration-300 shadow-[0_4px_20px_rgba(255,69,0,0.4)] hover:-translate-y-0.5 flex items-center gap-2">
-                    Next <i class="fas fa-arrow-right text-sm"></i>
+                <button id="btn-next" class="bg-primary px-8 py-3 rounded-2xl font-bold flex items-center gap-2">
+                    Next <i class="fas fa-arrow-right"></i>
                 </button>
             </div>
         </div>
@@ -226,56 +108,41 @@
     <!-- ============================================
          DETAIL VIEW
     ============================================ -->
-    <div id="detail-view" class="hidden min-h-screen relative pb-20">
-        <!-- Dynamic Background (Lower Blur for FPS) -->
-        <div id="detail-bg" class="absolute inset-0 h-[50vh] bg-cover bg-center opacity-15 blur-xl z-0 transition-opacity duration-700"></div>
-        <div class="absolute inset-0 h-[50vh] bg-gradient-to-b from-dark-900/40 via-dark-900/80 to-dark-900 z-0"></div>
+    <div id="detail-view" class="hidden pb-20 relative">
+        <!-- Dynamic Background -->
+        <div id="detail-bg" class="absolute inset-0 bg-cover bg-center opacity-15" style="height:50vh; filter:blur(40px);"></div>
+        <div class="absolute inset-0 bg-dark-900 opacity-80" style="height:50vh;"></div>
 
-        <div class="container mx-auto px-4 py-8 relative z-10 max-w-6xl">
-            <button onclick="window.history.back()" class="group mb-8 inline-flex items-center gap-3 text-gray-400 hover:text-white transition-colors">
-                <div class="w-10 h-10 rounded-full glass flex items-center justify-center group-hover:-translate-x-1 transition-transform">
+        <div class="container py-8 relative z-10">
+            <button onclick="window.history.back()" class="flex items-center gap-3 text-gray-400 group">
+                <div class="w-10 h-10 rounded-full glass flex items-center justify-center">
                     <i class="fas fa-arrow-left"></i>
                 </div>
-                <span class="font-bold tracking-wider text-sm">BACK</span>
+                <span class="font-bold text-sm">BACK</span>
             </button>
 
-            <!-- Main Info Card -->
-            <div class="flex flex-col md:flex-row gap-8 lg:gap-12 animate-fade-in-up">
-                <!-- Cover Image -->
-                <div class="flex-shrink-0 w-48 md:w-72 mx-auto md:mx-0 relative group">
-                    <div class="absolute inset-0 bg-primary/20 blur-xl rounded-2xl group-hover:bg-primary/30 transition-colors duration-500"></div>
-                    <img id="d-image" class="w-full relative rounded-2xl shadow-2xl border border-white/10 object-cover aspect-[2/3] z-10" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
+            <div class="flex flex-col md:flex-row gap-8 mt-8 animate-fade-in-up">
+                <div class="relative" style="width:240px; flex-shrink:0;">
+                    <img id="d-image" class="w-full rounded-2xl shadow-2xl border aspect-[2/3]" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
                 </div>
                 
-                <!-- Details -->
-                <div class="flex-1 flex flex-col justify-center">
-                    <h1 id="d-title" class="text-3xl md:text-5xl font-black mb-4 leading-tight font-display tracking-tight text-white drop-shadow-md"></h1>
-                    
-                    <div class="glass-card p-5 md:p-6 rounded-2xl mb-8 border-white/5">
-                        <h3 class="text-primary text-xs font-bold uppercase tracking-widest mb-3 flex items-center gap-2">
-                            <i class="fas fa-align-left"></i> Synopsis
-                        </h3>
-                        <p id="d-synopsis" class="text-gray-300 text-sm md:text-base leading-relaxed opacity-90 font-light line-clamp-5"></p>
+                <div class="flex-1">
+                    <h1 id="d-title" class="text-3xl md:text-5xl font-black mb-4 font-display"></h1>
+                    <div class="glass-card p-6 rounded-2xl mb-8">
+                        <p id="d-synopsis" class="text-gray-300 text-sm line-clamp-5"></p>
                     </div>
-                    
-                    <div id="d-info" class="flex flex-wrap gap-3 text-xs mb-8"></div>
-                    
-                    <!-- Quick Actions -->
+                    <div id="d-info" class="flex flex-wrap gap-2 mb-8"></div>
                     <div id="d-quick-actions" class="flex flex-wrap gap-4"></div>
                 </div>
             </div>
 
-            <!-- Chapters Section -->
-            <div class="mt-16 animate-fade-in-up" style="animation-delay: 0.1s;">
+            <div class="mt-16 animate-fade-in-up">
                 <div class="flex items-center gap-4 mb-8">
-                    <h3 class="text-2xl font-bold font-display uppercase tracking-tight">Chapters</h3>
-                    <div class="h-[1px] flex-1 bg-gradient-to-r from-white/10 to-transparent"></div>
+                    <h3 class="text-2xl font-bold font-display uppercase">Chapters</h3>
+                    <div class="border-white/5" style="flex:1; height:1px; border-bottom:1px solid rgba(255,255,255,0.05);"></div>
                 </div>
-                
-                <div class="glass-card rounded-3xl p-2 md:p-6 border-white/5">
-                    <div id="d-chapters" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3 max-h-[600px] overflow-y-auto pr-2 custom-scroll">
-                        <!-- Chapters inserted here -->
-                    </div>
+                <div class="glass-card rounded-3xl p-4">
+                    <div id="d-chapters" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" style="max-height:600px; overflow-y:auto;"></div>
                 </div>
             </div>
         </div>
@@ -284,43 +151,24 @@
     <!-- ============================================
          READER VIEW
     ============================================ -->
-    <div id="reader-view" class="hidden fixed inset-0 bg-dark-900 z-[100] overflow-y-auto scroll-smooth">
+    <div id="reader-view" class="hidden fixed inset-0 bg-dark-900 z-50 overflow-y-auto">
         
-        <!-- Interactive Float Controls -->
-        <div class="fixed bottom-6 right-6 flex flex-col gap-4 z-[110] transition-opacity duration-300" id="reader-floats">
-            <button onclick="document.getElementById('reader-view').scrollTo({ top: 0, behavior: 'smooth' })" class="w-12 h-12 rounded-full glass hover:bg-primary/20 hover:border-primary/50 text-white flex items-center justify-center shadow-2xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1">
-                <i class="fas fa-arrow-up"></i>
+        <!-- Top Bar -->
+        <div class="fixed top-0 inset-x-0 glass flex justify-between items-center px-4 py-3 z-50">
+            <button onclick="window.history.back()" class="glass px-4 py-2 rounded-full flex items-center gap-2">
+                <i class="fas fa-arrow-left text-xs"></i>
+                <span class="text-xs font-bold uppercase">Back</span>
             </button>
-            <button id="float-next-btn" class="hidden w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center shadow-[0_0_30px_rgba(255,69,0,0.5)] transition-all duration-300 hover:scale-110">
-                <i class="fas fa-forward-step text-xl"></i>
-            </button>
+            <div id="r-title" class="text-xs font-bold truncate px-4" style="max-width:200px;"></div>
+            <div style="width:70px;"></div>
         </div>
 
-        <!-- Minimalist Top Bar -->
-        <div class="fixed top-0 inset-x-0 bg-gradient-to-b from-black/90 to-transparent pt-4 pb-12 px-4 flex justify-between items-start z-50 pointer-events-none transition-transform duration-300" id="reader-topbar">
-            <button onclick="window.history.back()" class="pointer-events-auto group px-4 py-2 rounded-full glass hover:bg-white/10 flex items-center gap-2 transition-colors">
-                <i class="fas fa-arrow-left text-sm opacity-70 group-hover:-translate-x-1 transition-transform"></i>
-                <span class="text-xs font-bold tracking-widest uppercase">Go Back</span>
-            </button>
-            
-            <div class="max-w-xs md:max-w-md bg-dark-900/80 backdrop-blur-md px-6 py-2 rounded-full border border-white/10 shadow-2xl pointer-events-auto hidden md:block">
-                <span id="r-title" class="text-xs font-bold text-gray-200 truncate block"></span>
-            </div>
-            
-            <div class="w-24"></div> <!-- Spacer -->
-        </div>
+        <div id="r-images" class="reader-image-container flex flex-col items-center pt-20"></div>
 
-        <!-- Images Container -->
-        <div id="r-images" class="flex flex-col items-center min-h-screen reader-image-container pt-0 pb-20"></div>
-
-        <!-- Next/Prev Footer -->
-        <div class="p-6 md:p-12 text-center bg-gradient-to-t from-black to-transparent flex flex-col items-center">
-            <div class="w-full max-w-3xl h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent mb-8"></div>
-            <div id="reader-nav-bottom" class="flex justify-center flex-wrap gap-4 mb-12 w-full max-w-2xl px-4"></div>
-            
-            <button onclick="window.history.back()" class="text-gray-500 hover:text-white text-sm font-bold tracking-widest uppercase transition-colors flex items-center gap-2">
-                <i class="fas fa-home"></i> Return to Details
-            </button>
+        <!-- Footer -->
+        <div class="p-8 text-center flex flex-col items-center">
+            <div id="reader-nav-bottom" class="flex justify-center flex-wrap gap-4 mb-12"></div>
+            <button onclick="window.history.back()" class="text-gray-500 font-bold uppercase text-xs">Return to Menu</button>
         </div>
     </div>
 
@@ -331,15 +179,15 @@
     <script>
         // Reader scroll hide/show UI logic
         const readerView = document.getElementById('reader-view');
-        const readerTopbar = document.getElementById('reader-topbar');
+        const mainHeader = document.getElementById('main-header');
         let lastScrollY = 0;
         
         readerView.addEventListener('scroll', () => {
             const currentScrollY = readerView.scrollTop;
             if (currentScrollY > 100 && currentScrollY > lastScrollY) {
-                readerTopbar.style.transform = 'translateY(-100%)';
+                mainHeader.style.transform = 'translateY(-100%)';
             } else {
-                readerTopbar.style.transform = 'translateY(0)';
+                mainHeader.style.transform = 'translateY(0)';
             }
             lastScrollY = currentScrollY;
         }, { passive: true });
