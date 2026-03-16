@@ -230,13 +230,20 @@ app.get('/api/manga/details', async (req, res) => {
         const html = await fetchHtml(url);
         const $ = cheerio.load(html);
 
-        let title = $('.post-title h1, .entry-title, .tt, h1').first().text().trim() || url;
-        title = title.replace(/^Manga\s*\/\s*/i, '').trim(); // ล้าง prefix Manga/ ออก
+        // Title: .entry-title is the manga title on speed-manga.net
+        // h1 is the site-wide SEO heading (wrong!) — must avoid it
+        let title = $('.entry-title').first().text().trim()
+            || $('.post-title h1').first().text().trim()
+            || url;
+        title = title.replace(/^Manga\s*\/\s*/i, '').trim();
 
-        const imgEl = $('.summary_image img, .thumb img, .series-thumb img, .cover img').first();
-        const image = imgEl.attr('data-src') || imgEl.attr('data-lazy-src') || imgEl.attr('src') || '';
+        // Cover image: .thumb img src (confirmed correct from HTML dump)
+        const imgEl = $('.thumb img').first();
+        const image = imgEl.attr('src') || imgEl.attr('data-src') || imgEl.attr('data-lazy-src') || '';
 
-        const synopsis = $('.summary__content, .manga-excerpt, .desc, .entry-content p').first().text().trim() || 'ไม่มีเรื่องย่อ';
+        // Synopsis: .entry-content p (actual text block on speed-manga)
+        const synopsis = $('.entry-content p').map((_, el) => $(el).text().trim()).get()
+            .filter(t => t.length > 20).join('\n\n') || 'ไม่มีเรื่องย่อ';
 
         const info = {};
         $('.post-content_item').each((_, el) => {
@@ -245,21 +252,21 @@ app.get('/api/manga/details', async (req, res) => {
             if (label && value) info[label] = value;
         });
 
+        // Chapters: #chapterlist ul li → .eph-num a → .chapternum (name) + .chapterdate (time)
         const chapters = [];
         const chSeen = new Set();
-        const listContainer = $('.listing-chapters_wrap, .main.version-chap');
-        const targets = listContainer.length ? listContainer.find('li.wp-manga-chapter, li.main-chapter') : $('.wp-manga-chapter, li.main-chapter');
 
-        targets.each((i, el) => {
-            const a = $(el).find('a').first();
+        $('#chapterlist ul li').each((i, el) => {
+            const a = $(el).find('.eph-num a').first();
             const href = a.attr('href') || '';
             if (!href || chSeen.has(href)) return;
 
-            const name = a.text().trim().replace(/\s+/g, ' ');
-            if (!name || name.includes('ตอนล่าสุด')) return; // ข้ามลิงก์ซ้ำใน Widget
+            const name = a.find('.chapternum').text().trim()
+                || a.text().trim().replace(/\s+/g, ' ');
+            if (!name) return;
 
             chSeen.add(href);
-            const time = $(el).find('.chapter-release-date, .chapterdate, i, span:last-child').text().trim() || '';
+            const time = a.find('.chapterdate').text().trim() || '';
             const numMatch = name.match(/(\d+\.?\d*)/);
             chapters.push({
                 name,
@@ -269,25 +276,18 @@ app.get('/api/manga/details', async (req, res) => {
             });
         });
 
-        // Fallback ถ้ายังไม่ได้ตอน
+        // Fallback: generic link scan if no chapters found
         if (chapters.length === 0) {
-            $('main a[href], #main a[href], article a[href]').each((i, el) => {
+            $('a[href]').each((i, el) => {
                 const href = $(el).attr('href') || '';
                 const text = $(el).text().trim();
                 if (chSeen.has(href) || !href.startsWith('http')) return;
-
-                const isChLink = /chapter|ตอน|ch-|ch\d|\/ch\//i.test(href);
-                const hasChText = /ตอนที่|ตอน|chapter|ch\./i.test(text) || /^(\d+\.?\d*)$/.test(text);
-
-                if (isChLink && hasChText && text.length < 50) {
+                const isChLink = /chapter|ตอน|ch-|ch\d/i.test(href);
+                const hasChText = /ตอนที่|ตอน|chapter|ch\./i.test(text);
+                if (isChLink && hasChText && text.length < 60) {
                     chSeen.add(href);
                     const numMatch = text.match(/(\d+\.?\d*)/);
-                    chapters.push({
-                        name: text,
-                        url: href,
-                        time: '',
-                        num: numMatch ? parseFloat(numMatch[1]) : (9999 - i)
-                    });
+                    chapters.push({ name: text, url: href, time: '', num: numMatch ? parseFloat(numMatch[1]) : (9999 - i) });
                 }
             });
         }
