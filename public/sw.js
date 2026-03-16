@@ -41,13 +41,19 @@ self.addEventListener('fetch', (event) => {
   const isCdn = url.hostname.includes('fonts') || url.hostname.includes('cloudflare');
 
   if (request.method !== 'GET' || (!isLocal && !isCdn)) return;
-  if (url.pathname.includes('/api/')) return; // Don't cache API calls in SW (handled in app.js)
+  
+  // Strict API and Reader bypass
+  if (url.pathname.includes('/api/') || 
+      url.pathname.includes('/read') || 
+      url.pathname.includes('/manga')) return;
 
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       const fetchPromise = fetch(request).then((networkResponse) => {
+        // Clone immediately before anything else uses the stream
+        const clonedResponse = networkResponse.clone();
         caches.open(CACHE_NAME).then((cache) => {
-          cache.put(request, networkResponse.clone());
+          cache.put(request, clonedResponse);
         });
         return networkResponse;
       });

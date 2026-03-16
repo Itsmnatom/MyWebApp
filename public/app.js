@@ -21,38 +21,28 @@ function proxify(url) {
     return url;
 }
 
-function getBadgeUI(badge) {
-    const b = (badge || '').toLowerCase();
-    if (b.includes('manhwa') || b.includes('มังฮวา')) {
-        return '<div class="absolute top-2 left-2 bg-gradient-to-r from-primary to-[#ff2a5f] text-white text-[9px] font-bold tracking-widest px-2.5 py-1 rounded-full shadow-lg z-10 uppercase backdrop-blur-md">Manhwa</div>';
-    }
-    return '<div class="absolute top-2 left-2 glass text-white text-[9px] font-bold tracking-widest px-2.5 py-1 rounded-full shadow-lg z-10 uppercase">Manga</div>';
-}
-
-function spinnerHTML(msg = 'Authenticating Data...') {
-    return `<div class="col-span-full flex flex-col items-center justify-center py-32 gap-6 animate-fade-in-up">
-        <div class="relative w-16 h-16">
-            <div class="absolute inset-0 rounded-full border-t-2 border-primary animate-spin"></div>
-            <div class="absolute inset-2 rounded-full border-r-2 border-secondary animate-spin" style="animation-direction: reverse; animation-duration: 1.5s;"></div>
-            <i class="fas fa-bolt absolute inset-0 flex items-center justify-center text-primary/50 text-xl animate-pulse"></i>
-        </div>
-        <p class="text-gray-400 text-xs tracking-widest uppercase font-bold animate-pulse">${msg}</p>
+function spinnerHTML(text) {
+    return `<div class="col-span-full py-40 flex flex-col items-center gap-4 animate-fade-in-up">
+        <div class="w-16 h-16 rounded-full border-2 border-primary/30 border-t-primary animate-spin"></div>
+        <p class="text-gray-500 font-bold uppercase tracking-widest text-xs">${text}</p>
     </div>`;
 }
 
-function errorHTML(msg, retryFn = null) {
-    const retryBtn = retryFn
-        ? `<button onclick="${retryFn}" class="mt-6 bg-white/10 hover:bg-primary text-white border border-white/20 hover:border-primary px-8 py-2.5 rounded-full text-xs tracking-widest uppercase font-bold transition-all duration-300 shadow-xl hover:-translate-y-1">
-               <i class="fas fa-rotate-right mr-2"></i> Retry Connection
-           </button>`
-        : '';
-    return `<div class="col-span-full py-16 text-center glass-card rounded-3xl px-8 max-w-lg mx-auto border-red-900/30 animate-fade-in-up">
-        <div class="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6">
-            <i class="fas fa-triangle-exclamation text-red-500 text-2xl"></i>
-        </div>
-        <h3 class="text-white text-lg font-display font-black tracking-tight mb-2 uppercase">System Malfunction</h3>
-        <code class="text-[10px] text-red-300/60 block bg-black/40 p-3 rounded-lg border border-red-900/20 break-words mb-2">${clean(msg)}</code>
-        ${retryBtn}
+function errorHTML(msg, context = '') {
+    return `<div class="col-span-full py-20 px-8 glass-card rounded-3xl border-red-500/20 text-center">
+        <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-4"></i>
+        <p class="text-red-400 font-bold mb-2 uppercase tracking-widest text-sm">Error: ${clean(msg)}</p>
+        <p class="text-gray-500 text-xs mb-6">${context || ''}</p>
+        <button onclick="location.reload()" class="bg-primary px-8 py-3 rounded-2xl text-xs font-black uppercase text-white shadow-lg">Refresh Feed</button>
+    </div>`;
+}
+
+function getBadgeUI(badge) {
+    if (!badge) return '';
+    const isRaw = badge.toLowerCase().includes('raw');
+    const color = isRaw ? 'bg-blue-600' : 'bg-primary';
+    return `<div class="absolute top-4 right-4 z-10 ${color} text-white font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-widest shadow-xl">
+        ${clean(badge)}
     </div>`;
 }
 
@@ -184,7 +174,7 @@ function displayHome(data, page, fromCache = false) {
                     ${getBadgeUI(m.badge)}
                     <div class="absolute bottom-3 left-3 right-3 text-center">
                         <div class="glass inline-block px-3 py-1 rounded-full text-[9px] font-bold text-white mb-2 shadow-lg">
-                            <i class="fas fa-fire text-primary mr-1"></i> ${clean(m.lastChapter)}
+                            <i class="fas fa-bolt text-primary mr-1"></i> ${clean(m.lastChapter)}
                         </div>
                     </div>
                 </div>
@@ -199,31 +189,28 @@ function displayHome(data, page, fromCache = false) {
     if (updates.length === 0) {
         if (!fromCache) upContainer.innerHTML = '<div class="col-span-full py-20 text-center text-gray-500 font-bold uppercase tracking-widest text-sm">No transmissions found</div>';
     } else {
-        upContainer.innerHTML = updates.map((m, i) => {
-            const chaptersHTML = (m.chapters || []).map(c => `
-                <div onclick="event.stopPropagation(); navigate('/read?url=${encodeURIComponent(c.url)}&title=${encodeURIComponent(`${clean(m.title)} - ${clean(c.name)}`)}')"
-                    class="glass text-[10px] md:text-xs px-3 py-1.5 rounded-lg mt-1.5 hover:bg-primary/20 hover:border-primary/50 border border-white/5 transition-all duration-300 flex justify-between items-center group/btn cursor-pointer">
-                    <span class="font-bold truncate text-gray-300 group-hover/btn:text-white">${clean(c.name)}</span>
-                    <div class="flex items-center gap-2 flex-shrink-0">
-                        <span class="text-[8px] md:text-[9px] text-gray-500 group-hover/btn:text-primary transition-colors uppercase font-bold tracking-wider">${clean(c.time)}</span>
-                        <i class="fas fa-play text-[8px] text-primary opacity-0 group-hover/btn:opacity-100 transition-opacity transform group-hover/btn:translate-x-1 duration-300"></i>
-                    </div>
-                </div>`).join('');
-
-            return `
-            <div class="glass-card p-2 md:p-3 rounded-2xl flex gap-3 md:gap-4 hover:border-primary/40 transition-colors duration-500 cursor-pointer group ${fromCache ? '' : 'animate-fade-in-up'} shadow-lg hover:shadow-[0_8px_30px_rgba(255,69,0,0.15)]"
-                style="animation-delay: ${i * 0.03}s"
-                onclick="navigate('/manga?url=${encodeURIComponent(m.url)}')">
-                <div class="relative w-20 md:w-24 flex-shrink-0 overflow-hidden rounded-xl border border-white/5">
-                    <img src="${proxify(m.image)}" class="w-full h-[120px] md:h-[135px] object-cover bg-dark-800 group-hover:scale-110 transition-transform duration-700" loading="lazy">
+        upContainer.innerHTML = updates.map((m, i) => `
+            <div onclick="navigate('/manga?url=${encodeURIComponent(m.url)}')" class="glass-card rounded-2xl overflow-hidden group cursor-pointer flex p-3 md:p-4 gap-4 md:gap-5 border border-white/5 active:scale-95 transition-all duration-300 ${fromCache ? '' : 'animate-fade-in-up'}" style="animation-delay: ${i * 0.02}s">
+                <div class="relative flex-shrink-0 w-24 md:w-32 aspect-[2/3] overflow-hidden rounded-xl shadow-xl group-hover:shadow-primary/20 transition-all duration-500 border border-white/5 group-hover:border-primary/50">
+                    <img src="${proxify(m.image)}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out bg-dark-800" loading="lazy">
                     ${getBadgeUI(m.badge)}
+                    <div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-dark-900 to-transparent"></div>
                 </div>
-                <div class="flex-1 flex flex-col justify-center min-w-0 pr-1">
-                    <h3 class="font-black font-display text-sm md:text-base leading-tight truncate mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-primary transition-all pb-1">${clean(m.title)}</h3>
-                    <div class="flex flex-col gap-0.5">${chaptersHTML}</div>
+                <div class="flex flex-col justify-between py-1 min-w-0 flex-1">
+                    <div class="space-y-1.5 md:space-y-2">
+                        <h3 class="text-sm md:text-base font-bold font-display line-clamp-2 leading-tight transition-colors group-hover:text-primary">${clean(m.title)}</h3>
+                        <div class="inline-flex items-center gap-2 px-2.5 py-1 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
+                            <div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+                            <span class="text-[10px] md:text-xs font-bold text-primary uppercase tracking-wider">${clean(m.lastChapter)}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 text-[10px] md:text-xs text-gray-400 font-medium">
+                        <i class="far fa-clock opacity-60"></i>
+                        <span>${clean(m.time)}</span>
+                    </div>
                 </div>
-            </div>`;
-        }).join('');
+            </div>`
+        ).join('');
     }
 }
 
@@ -295,20 +282,24 @@ async function renderDetail(url) {
                 </button>`;
             }
 
-            chaptersEl.innerHTML = d.chapters.map((c, i) => {
-                const readPath = `/read?url=${encodeURIComponent(c.url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(c.name)}`)}`;
-                return `<button onclick="navigate('${readPath}')"
-                    class="w-full relative overflow-hidden glass hover:bg-white/10 p-4 rounded-2xl text-left transition-all duration-200 flex justify-between items-center group border border-white/5 hover:border-primary/50">
-                    <div class="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-primary to-secondary transform scale-x-0 origin-left group-hover:scale-x-100 transition-transform duration-200"></div>
-                    <div class="flex items-center gap-3 min-w-0 pr-2">
-                        <div class="w-8 h-8 rounded-full bg-dark-800 border border-white/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary group-hover:border-primary transition-colors">
-                            <i class="fas fa-book-open text-[10px] text-gray-400 group-hover:text-white"></i>
+            if (d.chapters && d.chapters.length > 0) {
+                chaptersEl.innerHTML = d.chapters.map((c, i) => {
+                    const readPath = `/read?url=${encodeURIComponent(c.url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(c.name)}`)}`;
+                    return `<button onclick="navigate('${readPath}')"
+                        class="w-full relative overflow-hidden glass hover:bg-white/10 p-4 rounded-2xl text-left transition-all duration-200 flex justify-between items-center group border border-white/5 hover:border-primary/50">
+                        <div class="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-primary to-secondary transform scale-x-0 origin-left group-hover:scale-x-100 transition-transform duration-200"></div>
+                        <div class="flex items-center gap-3 min-w-0 pr-2">
+                            <div class="w-8 h-8 rounded-full bg-dark-800 border border-white/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary group-hover:border-primary transition-colors">
+                                <i class="fas fa-book-open text-[10px] text-gray-400 group-hover:text-white"></i>
+                            </div>
+                            <span class="font-bold text-sm text-gray-200 group-hover:text-white truncate">${clean(c.name)}</span>
                         </div>
-                        <span class="font-bold text-sm text-gray-200 group-hover:text-white truncate">${clean(c.name)}</span>
-                    </div>
-                    <span class="text-[10px] font-bold tracking-widest uppercase opacity-40 group-hover:opacity-100 group-hover:text-primary transition-colors flex-shrink-0 whitespace-nowrap pl-2">${clean(c.time)}</span>
-                </button>`;
-            }).join('');
+                        <span class="text-[10px] font-bold tracking-widest uppercase opacity-40 group-hover:opacity-100 group-hover:text-primary transition-colors flex-shrink-0 whitespace-nowrap pl-2">${clean(c.time)}</span>
+                    </button>`;
+                }).join('');
+            } else {
+                chaptersEl.innerHTML = '<div class="col-span-full py-12 text-center text-gray-600 font-bold uppercase tracking-widest text-xs border border-dashed border-gray-800 rounded-2xl">No chapters available</div>';
+            }
         } else {
             chaptersEl.innerHTML = '<div class="col-span-full py-12 text-center text-gray-600 font-bold uppercase tracking-widest text-xs border border-dashed border-gray-800 rounded-2xl">No chapters available</div>';
         }
@@ -329,7 +320,7 @@ async function renderReader(url, title) {
     const floatNext = document.getElementById('float-next-btn');
 
     navBottom.innerHTML = '';
-    floatNext.classList.add('hidden');
+    if (floatNext) floatNext.classList.add('hidden');
 
     container.innerHTML = `<div class="py-40 flex flex-col items-center gap-6 animate-fade-in-up w-full">
         <div class="w-20 h-20 rounded-3xl glass-card flex items-center justify-center border-primary/30 shadow-[0_0_30px_rgba(255,69,0,0.2)]">
