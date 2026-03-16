@@ -75,12 +75,11 @@ async function fetchHtml(url) {
         // Correct call signature: gotScraping(url, options)
         const response = await gotScraping(url, {
             headerGeneratorOptions: {
-                browsers: [{ name: 'chrome', minVersion: 110 }],
+                browsers: [{ name: 'chrome', minVersion: 115 }],
                 devices: ['desktop'],
-                locales: ['th-TH', 'en-US'],
                 operatingSystems: ['windows']
             },
-            timeout: { request: 15000 },
+            timeout: { request: 10000 }, // Reduced to 10s for speed
             retry: { limit: 1 }
         });
         return response.body;

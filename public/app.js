@@ -238,10 +238,17 @@ async function renderDetail(url) {
     mainImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
     try {
-        const res = await fetch(`${API}/manga/details?url=${encodeURIComponent(url)}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
+
+        const res = await fetch(`${API}/manga/details?url=${encodeURIComponent(url)}`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
+        if (!res.ok) throw new Error(`HTTP ${res.status} [Link Unstable]`);
         const d = await res.json();
         if (d.error) throw new Error(d.error);
+
+        console.log('[SpeedManga] Data recovered:', d.title);
 
         document.getElementById('d-title').innerText = d.title || 'Unknown Classified';
         document.getElementById('d-synopsis').innerText = d.synopsis || 'No synopsis data recovered from archives.';
@@ -307,8 +314,13 @@ async function renderReader(url, title) {
     </div>`;
 
     try {
-        const res = await fetch(`${API}/manga/read?url=${encodeURIComponent(url)}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+        const res = await fetch(`${API}/manga/read?url=${encodeURIComponent(url)}`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (!res.ok) throw new Error(`HTTP ${res.status} [Signal Weak]`);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 

@@ -227,9 +227,9 @@
          DETAIL VIEW
     ============================================ -->
     <div id="detail-view" class="hidden min-h-screen relative pb-20">
-        <!-- Dynamic Background Blur -->
-        <div id="detail-bg" class="absolute inset-0 h-[60vh] bg-cover bg-center opacity-20 mask-image:linear-gradient(to_bottom,black_0%,transparent_100%) blur-2xl z-0 transition-all duration-1000"></div>
-        <div class="absolute inset-0 h-[60vh] bg-gradient-to-b from-dark-900/40 via-dark-900/80 to-dark-900 z-0"></div>
+        <!-- Dynamic Background (Lower Blur for FPS) -->
+        <div id="detail-bg" class="absolute inset-0 h-[50vh] bg-cover bg-center opacity-15 blur-xl z-0 transition-opacity duration-700"></div>
+        <div class="absolute inset-0 h-[50vh] bg-gradient-to-b from-dark-900/40 via-dark-900/80 to-dark-900 z-0"></div>
 
         <div class="container mx-auto px-4 py-8 relative z-10 max-w-6xl">
             <button onclick="window.history.back()" class="group mb-8 inline-flex items-center gap-3 text-gray-400 hover:text-white transition-colors">
