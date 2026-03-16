@@ -116,8 +116,11 @@ function filterAndSort(items) {
 // ══════════════════════════════════════════════════
 
 /**
- * Scrape home page — fetch ONCE and extract both popular + updates.
- * This prevents stale cache issues when popular/updates are fetched independently.
+ * Scrape home page — fetch ONCE, extract popular (.bs) + updates (.utao).
+ *
+ * HTML structure confirmed from dump:
+ *  Popular: .listupd.popularslider .bs -> .bsx > a[href] (cover link), .tt (title), .adds a .epxs (latest chapter), .colored (badge), img (cover)
+ *  Updates: .listupd .utao -> .uta > .imgu > a[href] (cover link), img (cover), .luf > a > h4 (title), .luf > ul > li > a (chapter link+name), li > span (time)
  */
 async function scrapeHome(page) {
     const fetchUrl = page === 1 ? TARGET_SITE : `${TARGET_SITE}page/${page}/`;
@@ -125,43 +128,52 @@ async function scrapeHome(page) {
     const $ = cheerio.load(html);
     const popular = [];
     const updates = [];
-    const seen = new Set();
+    const seenPopular = new Set();
+    const seenUpdates = new Set();
 
-    // Helper to extract chapter URL/name from .adds a links inside .bs item
-    const extractChapters = (el) => {
-        const chapters = [];
-        $(el).find('.adds a').each((idx, a) => {
-            if (idx >= 2) return;
-            const chUrl = $(a).attr('href');
-            const chName = $(a).find('.epxs').text().trim() || $(a).text().trim();
-            // Skip if name is only a number (rating score like "7.00", "6.8")
-            const isRating = /^\d+\.?\d*$/.test(chName);
-            if (chUrl && chName && !isRating) {
-                chapters.push({ name: chName, url: chUrl, time: 'NEW' });
-            }
-        });
-        return chapters;
-    };
-
+    // ── POPULAR: .listupd .bs (featured slider — internal links only) ──
     $('.listupd .bs').each((_, el) => {
         const url = $(el).find('a').first().attr('href');
-        if (!url || seen.has(url)) return;
-        seen.add(url);
+        if (!url || seenPopular.has(url)) return;
+        seenPopular.add(url);
 
         const title = $(el).find('.tt').first().text().trim()
             || $(el).find('a').first().attr('title') || '';
         if (!title) return;
 
         const imgEl = $(el).find('img').first();
-        const image = imgEl.attr('data-src') || imgEl.attr('data-lazy-src') || imgEl.attr('data-cfsrc') || imgEl.attr('src') || '';
+        const image = imgEl.attr('data-src') || imgEl.attr('data-lazy-src') || imgEl.attr('src') || '';
         const lastChapter = $(el).find('.adds a .epxs').first().text().trim() || 'Latest';
         const badge = $(el).find('.colored').first().text().trim()
-            || $(el).find('.limit, .type, .manga-title-badges').first().text().trim() || '';
+            || $(el).find('.limit, .manga-title-badges').first().text().trim() || '';
 
-        const chapters = extractChapters(el);
-
-        // Popular = featured items (same set — used as both popular & update list)
         popular.push({ title, image, lastChapter, url, badge });
+    });
+
+    // ── UPDATES: .listupd .utao (latest updates grid — includes internal + affiliate partner items) ──
+    $('.listupd .utao').each((_, el) => {
+        const url = $(el).find('.imgu a').attr('href')
+            || $(el).find('a.series').first().attr('href') || '';
+        if (!url || seenUpdates.has(url)) return;
+        seenUpdates.add(url);
+
+        const title = $(el).find('.luf h4').first().text().trim()
+            || $(el).find('a').first().attr('title') || '';
+        if (!title) return;
+
+        const imgEl = $(el).find('img').first();
+        const image = imgEl.attr('src') || imgEl.attr('data-src') || imgEl.attr('data-lazy-src') || '';
+        const badge = $(el).find('.luf ul').attr('class') || ''; // ul class = "Manhwa" / "Manhua" / "Manga"
+
+        const chapters = [];
+        $(el).find('.luf ul li').each((idx, li) => {
+            if (idx >= 2) return;
+            const chUrl = $(li).find('a').attr('href');
+            const chName = $(li).find('a').text().trim();
+            const chTime = $(li).find('span').text().trim() || '';
+            if (chUrl && chName) chapters.push({ name: chName, url: chUrl, time: chTime || 'NEW' });
+        });
+
         updates.push({ title, image, url, badge, chapters });
     });
 
@@ -170,6 +182,7 @@ async function scrapeHome(page) {
         updates: filterAndSort(updates)
     };
 }
+
 
 // ══════════════════════════════════════════════════
 //  API: HOME
