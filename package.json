@@ -17,6 +17,6 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "p-limit": "^7.3.0",
-    "puppeteer-core": "^24.39.1"
+    "puppeteer": "^24.39.1"
   }
 }
