@@ -299,11 +299,24 @@ function displayHome(data, page, fromCache = false) {
                     <div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-dark-900 to-transparent"></div>
                 </div>
                 <div class="flex flex-col justify-between py-1 min-w-0 flex-1">
-                    <div class="space-y-1.5 md:space-y-2">
+                    <div class="space-y-2 md:space-y-3">
                         <h3 class="text-sm md:text-base font-bold font-display line-clamp-2 leading-tight transition-colors group-hover:text-primary">${clean(m.title)}</h3>
-                        <div class="inline-flex items-center gap-2 px-2.5 py-1 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
-                            <div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
-                            <span class="text-[10px] md:text-xs font-bold text-primary uppercase tracking-wider">${clean(m.lastChapter)}</span>
+                        <div class="flex flex-wrap gap-1.5 md:gap-2">
+                            ${(m.chapters && m.chapters.length > 0) ? m.chapters.map(ch => {
+                                const readPath = `/read?url=${encodeURIComponent(ch.url)}&title=${encodeURIComponent(`${clean(m.title)} - ${clean(ch.name)}`)}`;
+                                const isRead = READ_CHAPTERS.includes(ch.url);
+                                return `
+                                <div onclick="event.stopPropagation(); navigate('${readPath}')"
+                                    class="${isRead ? 'bg-primary/20 border-primary/30' : 'bg-primary/10 border-transparent'} border hover:bg-primary/30 px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg transition-all flex items-center gap-1.5 active:scale-95">
+                                    <div class="w-1 h-1 rounded-full ${isRead ? 'bg-primary animate-none' : 'bg-primary animate-pulse'}"></div>
+                                    <span class="text-[9px] md:text-[10px] font-black ${isRead ? 'text-primary' : 'text-primary/90'} uppercase tracking-tight">${clean(ch.name)}</span>
+                                </div>`;
+                            }).join('') : `
+                                <div class="px-2.5 py-1 bg-primary/10 rounded-lg flex items-center gap-2">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+                                    <span class="text-[10px] md:text-xs font-bold text-primary uppercase tracking-wider">${clean(m.lastChapter || 'NEW')}</span>
+                                </div>
+                            `}
                         </div>
                     </div>
                     <div class="flex items-center gap-2 text-[10px] md:text-xs text-gray-400 font-medium">

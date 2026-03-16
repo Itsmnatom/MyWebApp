@@ -181,14 +181,18 @@ async function scrapeHome(page) {
         const lastChapter = $(el).find('.adds a .epxs').first().text().trim() || 'Latest';
         const badge = $(el).find('.colored').first().text().trim() || '';
 
-        // Chapters from .adds a .epxs (only the chapter links, not rating links)
+        // Chapters from .adds a (Aggressive)
         const chapters = [];
         $(el).find('.adds a').each((idx, a) => {
-            if (idx >= 2) return;
-            const chUrl = $(a).attr('href');
-            const chName = $(a).find('.epxs').text().trim();
-            if (chUrl && chName && !/^\d+\.?\d*$/.test(chName)) {
-                chapters.push({ name: chName, url: chUrl, time: 'NEW' });
+            const h = $(a).attr('href');
+            const t = $(a).text().trim();
+            const epxs = $(a).find('.epxs').text().trim();
+            const chName = epxs || t;
+
+            if (h && chName && (chName.includes('ตอนที่') || chName.includes('Chapter') || chName.includes('Ch.'))) {
+                if (chapters.length < 3) {
+                    chapters.push({ name: chName, url: h, time: 'NEW' });
+                }
             }
         });
 
@@ -211,16 +215,37 @@ async function scrapeHome(page) {
         const image = imgEl.attr('src') || imgEl.attr('data-src') || imgEl.attr('data-lazy-src') || '';
         const badge = $(el).find('.luf ul').attr('class') || '';
 
+        // Aggressive Chapter Extraction for Updates
         const chapters = [];
-        $(el).find('.luf ul li').each((idx, li) => {
-            if (idx >= 2) return;
-            const chUrl = $(li).find('a').attr('href');
-            const chName = $(li).find('a').text().trim();
-            const chTime = $(li).find('span').text().trim() || '';
-            if (chUrl && chName) chapters.push({ name: chName, url: chUrl, time: chTime || 'NEW' });
+        $(el).find('.luf a').each((_, a) => {
+            const h = $(a).attr('href');
+            const t = $(a).text().trim();
+            // Match anything that looks like a chapter link
+            if (h && t && (t.includes('ตอนที่') || t.includes('Chapter') || t.includes('Ch.'))) {
+                if (chapters.length < 5) {
+                    const timeEl = $(a).parent().find('span').first();
+                    chapters.push({ 
+                        name: t, 
+                        url: h, 
+                        time: timeEl.text().trim() || 'NEW' 
+                    });
+                }
+            }
         });
 
-        updates.push({ title, image, url, badge, chapters });
+        // If still empty, try looking for ANY link that isn't the title link
+        if (chapters.length === 0) {
+            $(el).find('.luf ul li a').each((_, a) => {
+                if (chapters.length < 5) {
+                    chapters.push({ name: $(a).text().trim(), url: $(a).attr('href'), time: 'NEW' });
+                }
+            });
+        }
+
+        const lastChapter = chapters.length > 0 ? chapters[0].name : 'Latest';
+        const time = chapters.length > 0 ? chapters[0].time : 'NEW';
+
+        updates.push({ title, image, url, badge, chapters, lastChapter, time });
     });
 
     return {
