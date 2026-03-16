@@ -283,14 +283,20 @@ app.get('/api/manga/details', async (req, res) => {
         }
 
         const chapters = [];
-        const chBlocks = extractAll(html, /class="(?:wp-manga-chapter|eplister[^"]*|chapterlist[^"]*)[^>]*>([\s\S]*?)<\/li>/gi);
+        // Extract chapters using robust inner blocks like chbox or eph-num to circumvent greedy ul>li matching
+        const chBlocks = extractAll(html, /class="(?:chbox|eph-num|wp-manga-chapter)[^>]*>([\s\S]*?)<\/(?:div|li)>/gi)
+                         .concat(extractAll(html, /<li[^>]*data-num[^>]*>([\s\S]*?)<\/li>/gi));
+                         
+        const seenCh = new Set();
         for (const ch of chBlocks) {
             const cUrlM = ch.match(/href="([^"]+)"/);
-            const cNameM = ch.match(/href="[^"]+">([^<]+)<\/a>/);
+            const cNameM = ch.match(/href="[^"]+">([^<]+)<\/a>/) || ch.match(/class="chapternum"[^>]*>([^<]+)/);
             const cTimeM = ch.match(/class="(?:chapter-release-date|chapterdate)[^>]*>([^<]*)/) || ch.match(/<i>([^<]+)<\/i>/);
-            if (cUrlM) {
+            
+            if (cUrlM && !seenCh.has(cUrlM[1])) {
+                seenCh.add(cUrlM[1]);
                 chapters.push({
-                    name: cNameM ? cNameM[1].trim() : '',
+                    name: cNameM ? cNameM[1].trim() : 'Chapter',
                     url: cUrlM[1],
                     time: cTimeM ? cTimeM[1].trim() : ''
                 });
