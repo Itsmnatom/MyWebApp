@@ -1,0 +1,163 @@
+{
+  "htmlSections": [
+    {
+      "line": 1,
+      "content": ".wp-block-button__link{color:#fff;background-color:#32373c;border-radius:9999px;box-shadow:none;text-decoration:none;padding:calc(.667em + 2px) calc(1.333em + 2px);font-size:1.125em}.wp-block-file__button{background:#32373c;color:#fff;text-decoration:none}</style><style id=\"global-styles-inline-css\" type=\"text/css\">:root{--wp--preset--aspect-ratio--square:1;--wp--preset--aspect-ratio--4-3:4/3;--wp"
+    },
+    {
+      "line": 6,
+      "content": "</style></head><body class=\"darkmode\" itemscope=\"itemscope\" itemtype=\"http://schema.org/WebPage\"> <script defer=\"\" src=\"data:text/javascript;base64,dHNfZGFya21vZGUuaW5pdCgpOw==\" type=\"text/javascript\"></script> <div class=\"mainholder\"><div class=\"th\"><div class=\"centernav bound\"><div class=\"shme\"><i class=\"fa fa-bars\" aria-hidden=\"true\"></i></div><header role=\"banner\" itemscope=\"\" itemtype=\"http:/"
+    }
+  ],
+  "ajaxLog": [
+    {
+      "url": "https://1668manga.com/wp-admin/admin-ajax.php",
+      "status": 200,
+      "bodyLen": 2,
+      "body": "[]"
+    }
+  ],
+  "windowVars": {
+    "location": {
+      "ancestorOrigins": {},
+      "href": "https://1668manga.com/manga/the-regressed-mercenarys-machinations/",
+      "origin": "https://1668manga.com",
+      "protocol": "https:",
+      "host": "1668manga.com",
+      "hostname": "1668manga.com",
+      "port": "",
+      "pathname": "/manga/the-regressed-mercenarys-machinations/",
+      "search": "",
+      "hash": "",
+      "assign": {},
+      "reload": {},
+      "replace": {},
+      "toString": {}
+    },
+    "HISTORY": {
+      "max": 20,
+      "savename": "ts_mangareader_history",
+      "checkLocalStorage": {},
+      "storeLocalStorage": {},
+      "getLocalStorage": {},
+      "getStored": {},
+      "push": {},
+      "generateHTML": {},
+      "redirect": {},
+      "run": {}
+    },
+    "ts_restricted_warning": {
+      "localStorageName": "ts_reswar",
+      "redirect_page": "https://1668manga.com/",
+      "series_id": null,
+      "init": {},
+      "run": {},
+      "can_i_run": {},
+      "quickHide": {},
+      "isUserAgree": {},
+      "setLocalStorage": {},
+      "getModal": {},
+      "getSeriesId": {},
+      "getEnterButton": {},
+      "getExitButton": {},
+      "attachEvents": {},
+      "enterBtnOnClick": {}
+    },
+    "thickboxL10n": {
+      "next": "Next >",
+      "prev": "< Prev",
+      "image": "Image",
+      "of": "of",
+      "close": "Close",
+      "noiframes": "This feature requires inline frames. You have iframes disabled or your browser does not support them.",
+      "loadingAnimation": "https://1668manga.com/wp-includes/js/thickbox/loadingAnimation.gif"
+    },
+    "_wpemojiSettings": {
+      "baseUrl": "https://s.w.org/images/core/emoji/17.0.2/72x72/",
+      "ext": ".png",
+      "svgUrl": "https://s.w.org/images/core/emoji/17.0.2/svg/",
+      "svgExt": ".svg",
+      "source": {
+        "concatemoji": "https://1668manga.com/wp-includes/js/wp-emoji-release.min.js?ver=6.9.4"
+      },
+      "supports": {
+        "everything": false,
+        "everythingExceptFlag": false,
+        "flag": false,
+        "emoji": false
+      }
+    },
+    "Histats": {
+      "o_i": 1,
+      "ver": 16,
+      "eve": 3,
+      "cver": 0,
+      "s_id": 4937174,
+      "s_pd": 0,
+      "d_op": 0,
+      "i_dom": "4",
+      "i_id": 0,
+      "i_w": "0",
+      "i_h": "0",
+      "i_b": "",
+      "s_d": "",
+      "s_u": "https://1668manga.com/manga/the-regressed-mercenarys-machinations/",
+      "s_l": "en-US",
+      "s_t": "",
+      "d_s": 800,
+      "d_fa": 1773670806323,
+      "d_tf": 0,
+      "d_nv": 1,
+      "d_mu": 1,
+      "d_cv": 1,
+      "d_cs": 1,
+      "d_cp": 0,
+      "d_pON": 0,
+      "d_pn": 1,
+      "d_pt": 1,
+      "f_pv": 0,
+      "s_ta": "",
+      "a_va": [],
+      "s_ti": "The Regressed Mercenary’s Machinations - 1668Manga - เว็บอ่านมังงะแปลไทย | มังงะจีน Manhua | มังฮวา Manhwa | อ่านฟรีทุกวัน",
+      "asi": "1",
+      "o_fa": 0,
+      "o_de": 0,
+      "o_BC": 0,
+      "o_fr": 0,
+      "p_ff": 0,
+      "n_a": "Netscape",
+      "n_f": 0,
+      "n_n": 0,
+      "o_n": 1773670806323,
+      "c_on": 1773670806323,
+      "s_sc1": "Vis. today=32005#",
+      "s_sc2": "00010000",
+      "s_asc2": {
+        "3": "Vis. today=32005"
+      },
+      "fasi": {},
+      "is": {},
+      "isd": {},
+      "GC": {},
+      "ENCODE": {},
+      "DECODE": {},
+      "DECODEuri": {},
+      "SC": {},
+      "framed_page": {},
+      "start": {},
+      "init": {},
+      "add_v": {},
+      "imp_v": {},
+      "load_JScall": {},
+      "load_GIFimg": {},
+      "load_GIFicon": {},
+      "load_gifImgOrTopImg": {},
+      "track_hits": {},
+      "track_event": {},
+      "sc1": {},
+      "oldcode_start": {},
+      "load_flash": {},
+      "filename": "js15_as.js"
+    }
+  }
+}
