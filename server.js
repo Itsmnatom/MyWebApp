@@ -20,6 +20,8 @@ const express = require('express');
 const cors = require('cors');
 const cheerio = require('cheerio');
 const path = require('path');
+const got = require('got'); // Required for Stable Proxy
+const axios = require('axios'); // Optional but in package.json
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -450,27 +452,36 @@ app.get('/api/status', (_req, res) => res.json({
     cache: { home: CACHE.home.stats(), details: CACHE.details.stats(), read: CACHE.read.stats() },
 }));
 
-// Proxy เพื่อหลบการบล็อก Hotlink
+// Proxy เพื่อหลบการบล็อก Hotlink และรองรับ Protocol ที่เสถียรขึ้น
 app.get('/api/proxy', async (req, res) => {
     const imageUrl = req.query.url;
     if (!imageUrl) return res.status(400).send('No image URL');
-    try {
-        const fetchModule = await import('node-fetch').catch(() => null) || { default: fetch };
-        const myFetch = fetchModule.default || fetch;
 
-        const r = await myFetch(imageUrl, {
+    try {
+        // ใช้ got (version 11.8.6) ที่มีความเสถียรสูงกว่า fetch ในการดึงรูป
+        const response = await got(imageUrl, {
             headers: {
-                'Referer': TARGET_SITE,
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                'referer': TARGET_SITE,
+                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
             },
-            signal: AbortSignal.timeout(8000),
+            timeout: { request: 10000 },
+            retry: { limit: 1 },
+            responseType: 'buffer',
+            https: { rejectUnauthorized: false } // ป้องกันปัญหา Cert ของบางเว็บบรรยายมังงะ
         });
-        if (!r.ok) return res.status(r.status).send('Upstream error');
-        const buf = Buffer.from(await r.arrayBuffer());
-        res.setHeader('Content-Type', r.headers.get('content-type') || 'image/jpeg');
+
+        // ส่ง Headers ที่จำเป็นกลับไปให้ Browser
+        res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
         res.setHeader('Cache-Control', 'public, max-age=86400');
-        res.send(buf);
-    } catch { res.status(500).send('Proxy error'); }
+        res.setHeader('Access-Control-Allow-Origin', '*'); // รองรับ CORS
+        res.setHeader('X-Proxy-By', 'SpeedManga-Engine');
+
+        res.send(response.body);
+    } catch (err) {
+        console.error(`[PROXY ERROR] Failure for ${imageUrl}: ${err.message}`);
+        res.status(404).send('Image extraction failed');
+    }
 });
 
 // SPA Routing
