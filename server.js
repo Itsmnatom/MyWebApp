@@ -128,14 +128,13 @@ async function scrapeHome(page) {
     const $ = cheerio.load(html);
     const popular = [];
     const updates = [];
-    const seenPopular = new Set();
-    const seenUpdates = new Set();
+    const seen = new Set(); // shared dedup across popular+updates
 
-    // ── POPULAR: .listupd .bs (featured slider — internal links only) ──
+    // ── POPULAR + UPDATES: .bs (featured slider, internal) ──
     $('.listupd .bs').each((_, el) => {
         const url = $(el).find('a').first().attr('href');
-        if (!url || seenPopular.has(url)) return;
-        seenPopular.add(url);
+        if (!url || seen.has(url)) return;
+        seen.add(url);
 
         const title = $(el).find('.tt').first().text().trim()
             || $(el).find('a').first().attr('title') || '';
@@ -144,18 +143,29 @@ async function scrapeHome(page) {
         const imgEl = $(el).find('img').first();
         const image = imgEl.attr('data-src') || imgEl.attr('data-lazy-src') || imgEl.attr('src') || '';
         const lastChapter = $(el).find('.adds a .epxs').first().text().trim() || 'Latest';
-        const badge = $(el).find('.colored').first().text().trim()
-            || $(el).find('.limit, .manga-title-badges').first().text().trim() || '';
+        const badge = $(el).find('.colored').first().text().trim() || '';
+
+        // Chapters from .adds a .epxs (only the chapter links, not rating links)
+        const chapters = [];
+        $(el).find('.adds a').each((idx, a) => {
+            if (idx >= 2) return;
+            const chUrl = $(a).attr('href');
+            const chName = $(a).find('.epxs').text().trim();
+            if (chUrl && chName && !/^\d+\.?\d*$/.test(chName)) {
+                chapters.push({ name: chName, url: chUrl, time: 'NEW' });
+            }
+        });
 
         popular.push({ title, image, lastChapter, url, badge });
+        updates.push({ title, image, url, badge, chapters }); // also in updates
     });
 
-    // ── UPDATES: .listupd .utao (latest updates grid — includes internal + affiliate partner items) ──
+    // ── UPDATES ONLY: .utao (latest updates grid — 42 items, internal + affiliate) ──
     $('.listupd .utao').each((_, el) => {
         const url = $(el).find('.imgu a').attr('href')
             || $(el).find('a.series').first().attr('href') || '';
-        if (!url || seenUpdates.has(url)) return;
-        seenUpdates.add(url);
+        if (!url || seen.has(url)) return;
+        seen.add(url);
 
         const title = $(el).find('.luf h4').first().text().trim()
             || $(el).find('a').first().attr('title') || '';
@@ -163,7 +173,7 @@ async function scrapeHome(page) {
 
         const imgEl = $(el).find('img').first();
         const image = imgEl.attr('src') || imgEl.attr('data-src') || imgEl.attr('data-lazy-src') || '';
-        const badge = $(el).find('.luf ul').attr('class') || ''; // ul class = "Manhwa" / "Manhua" / "Manga"
+        const badge = $(el).find('.luf ul').attr('class') || '';
 
         const chapters = [];
         $(el).find('.luf ul li').each((idx, li) => {
