@@ -626,8 +626,6 @@ async function renderReader(url, title) {
         ).join('');
 
         // Bottom Navigation UI
-        const params = new URLSearchParams(window.location.search);
-        const mangaUrl = params.get('mangaUrl');
         const mangaUrlParam = mangaUrl ? `&mangaUrl=${encodeURIComponent(mangaUrl)}` : '';
 
         if (data.prevUrl) {
