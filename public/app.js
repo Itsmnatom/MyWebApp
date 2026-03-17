@@ -21,6 +21,16 @@ function proxify(url) {
     return url;
 }
 
+function norm(url) {
+    if (!url) return '';
+    try {
+        const d = decodeURIComponent(url);
+        return d.split('?')[0].replace(/\/$/, '').toLowerCase().trim();
+    } catch (e) {
+        return url.split('?')[0].replace(/\/$/, '').toLowerCase().trim();
+    }
+}
+
 function spinnerHTML(text) {
     return `<div class="col-span-full py-40 flex flex-col items-center gap-4 animate-fade-in-up">
         <div class="w-16 h-16 rounded-full border-2 border-primary/30 border-t-primary animate-spin"></div>
@@ -90,7 +100,7 @@ function addToHistory(manga, chapter) {
     HISTORY = [entry, ...HISTORY.filter(h => h.mangaUrl !== manga.url)].slice(0, 15);
 
     // Also track as read chapter
-    if (chapter.url && !READ_CHAPTERS.includes(chapter.url)) {
+    if (chapter.url && !READ_CHAPTERS.some(u => norm(u) === norm(chapter.url))) {
         READ_CHAPTERS.unshift(chapter.url);
         saveState();
     }
@@ -153,8 +163,8 @@ async function handleLocation() {
     if (rView) rView.scrollTop = 0;
 
     if (path === '/read' && targetUrl) {
-        document.body.style.overflow = 'hidden';
-        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = ''; // Allow natural scroll for browser URL bar hiding
+        document.documentElement.style.overflow = '';
         document.getElementById('reader-view').classList.remove('hidden');
         document.getElementById('main-header').classList.add('-translate-y-full');
         await renderReader(targetUrl, targetTitle || 'Reading...');
@@ -370,7 +380,7 @@ function displayHome(data, page, fromCache = false) {
                         <div class="flex flex-wrap gap-1.5 md:gap-2">
                             ${(m.chapters && m.chapters.length > 0) ? m.chapters.map(ch => {
             const readPath = `/read?url=${encodeURIComponent(ch.url)}&title=${encodeURIComponent(`${clean(m.title)} - ${clean(ch.name)}`)}`;
-            const isRead = READ_CHAPTERS.includes(ch.url);
+            const isRead = READ_CHAPTERS.some(u => norm(u) === norm(ch.url));
             return `
                                 <div onclick="event.stopPropagation(); navigate('${readPath}')"
                                     class="${isRead ? 'bg-primary/20 border-primary/30' : 'bg-primary/10 border-transparent'} border hover:bg-primary/30 px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg transition-all flex items-center gap-1.5 active:scale-95">
@@ -467,7 +477,7 @@ async function renderDetail(url) {
             const lastCh = [...d.chapters].sort((a, b) => b.num - a.num)[0];
 
             if (firstCh) {
-                const isFirstRead = READ_CHAPTERS.includes(firstCh.url);
+                const isFirstRead = READ_CHAPTERS.some(u => norm(u) === norm(firstCh.url));
                 qaEl.innerHTML += `
                 <button onclick="navigate('/read?url=${encodeURIComponent(firstCh.url)}&mangaUrl=${encodeURIComponent(url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(firstCh.name)}`)}')"
                     class="${isFirstRead ? 'bg-primary/20 border-primary' : 'bg-white/10 hover:bg-white/20 border-white/10'} border px-6 py-3 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 flex items-center gap-3">
@@ -475,7 +485,7 @@ async function renderDetail(url) {
                 </button>`;
             }
             if (lastCh && lastCh !== firstCh) {
-                const isLastRead = READ_CHAPTERS.includes(lastCh.url);
+                const isLastRead = READ_CHAPTERS.some(u => norm(u) === norm(lastCh.url));
                 qaEl.innerHTML += `
                 <button onclick="navigate('/read?url=${encodeURIComponent(lastCh.url)}&mangaUrl=${encodeURIComponent(url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(lastCh.name)}`)}')"
                     class="bg-gradient-to-r from-primary to-secondary hover:brightness-110 px-8 py-3 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-[0_0_20px_rgba(255,69,0,0.3)] hover:-translate-y-1 flex items-center gap-3">
@@ -485,7 +495,7 @@ async function renderDetail(url) {
 
             if (d.chapters && d.chapters.length > 0) {
                 chaptersEl.innerHTML = d.chapters.map((c, i) => {
-                    const isRead = READ_CHAPTERS.includes(c.url);
+                    const isRead = READ_CHAPTERS.some(u => norm(u) === norm(c.url));
                     const isAlt = url.includes('1668manga.com');
                     const readPath = `/read?url=${encodeURIComponent(c.url)}&mangaUrl=${encodeURIComponent(url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(c.name)}`)}${isAlt ? '&alt=1' : ''}`;
                     return `<button onclick="navigate('${readPath}')"
@@ -535,7 +545,7 @@ async function renderReader(url, title) {
     const mangaUrl = rParams.get('mangaUrl');
 
     // Immediate Read Status Update (Don't wait for fetch)
-    if (url && !READ_CHAPTERS.includes(url)) {
+    if (url && !READ_CHAPTERS.some(u => norm(u) === norm(url))) {
         READ_CHAPTERS.unshift(url);
         saveState();
     }
