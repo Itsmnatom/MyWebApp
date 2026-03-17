@@ -46,16 +46,6 @@ function getBadgeUI(badge) {
     </div>`;
 }
 
-function handleImageClick(event) {
-    const readerTopbar = document.getElementById('reader-topbar');
-    const readerFloats = document.getElementById('reader-floats');
-    const readerFooter = document.getElementById('reader-footer');
-    
-    // Total UI Toggle (No scroll)
-    if (readerTopbar) readerTopbar.classList.toggle('ui-hidden');
-    if (readerFloats) readerFloats.classList.toggle('ui-hidden');
-    if (readerFooter) readerFooter.classList.toggle('ui-hidden');
-}
 
 // ══════════════════════════════════════════════════
 //  PERSISTENCE (Bookmarks & History)
@@ -646,5 +636,5 @@ async function renderReader(url, title) {
 // ══════════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════════
-window.onload = handleLocation;
 function handleImageClick(e) { ['reader-topbar', 'reader-floats', 'reader-footer'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.toggle('ui-hidden'); }); }
+window.onload = handleLocation;
