@@ -302,6 +302,7 @@ async function renderHome(page) {
 }
 
 function displayHome(data, page, fromCache = false) {
+    READ_CHAPTERS = JSON.parse(localStorage.getItem('sm_read_chapters') || '[]');
     const popContainer = document.getElementById('popular-container');
     const upContainer = document.getElementById('updates-container');
     const popSection = document.getElementById('popular-section');
@@ -392,6 +393,10 @@ function displayHome(data, page, fromCache = false) {
 // ══════════════════════════════════════════════════
 
 async function renderDetail(url) {
+    // Always reload from localStorage so read-state is up-to-date
+    // (user may have read chapters in another tab or navigated back from reader)
+    READ_CHAPTERS = JSON.parse(localStorage.getItem('sm_read_chapters') || '[]');
+
     const chaptersEl = document.getElementById('d-chapters');
     chaptersEl.innerHTML = spinnerHTML('Extracting Archives...');
 
@@ -442,9 +447,6 @@ async function renderDetail(url) {
 
         const qaEl = document.getElementById('d-quick-actions');
         qaEl.innerHTML = '';
-        
-        // Sync read chapters from storage before rendering
-        READ_CHAPTERS = JSON.parse(localStorage.getItem('sm_read_chapters') || '[]');
 
         window.currentManga = { title: d.title, url, image: d.image, lastChapter: d.chapters?.[0]?.name || '' };
         window.handleBookmarkToggle = () => toggleBookmark(window.currentManga);
