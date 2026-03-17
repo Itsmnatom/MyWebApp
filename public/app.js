@@ -27,6 +27,22 @@ function proxify(url) {
     return url;
 }
 
+function norm(url) {
+    if (!url) return '';
+    try {
+        const d = decodeURIComponent(url);
+        return d.split('?')[0].replace(/\/$/, '').toLowerCase().trim();
+    } catch (e) {
+        return url.split('?')[0].replace(/\/$/, '').toLowerCase().trim();
+    }
+}
+
+function loadState() {
+    BOOKMARKS = JSON.parse(localStorage.getItem('sm_bookmarks') || '[]');
+    HISTORY = JSON.parse(localStorage.getItem('sm_history') || '[]');
+    READ_CHAPTERS = JSON.parse(localStorage.getItem('sm_read_chapters') || '[]');
+}
+
 function spinnerHTML(text) {
     return `<div class="col-span-full py-40 flex flex-col items-center gap-4 animate-fade-in-up">
         <div class="w-16 h-16 rounded-full border-2 border-primary/30 border-t-primary animate-spin"></div>
@@ -87,8 +103,9 @@ function addToHistory(manga, chapter) {
     };
     HISTORY = [entry, ...HISTORY.filter(h => h.mangaUrl !== manga.url)].slice(0, 15);
 
-    if (chapter.url && !READ_CHAPTERS.includes(chapter.url)) {
+    if (chapter.url && !READ_CHAPTERS.some(u => norm(u) === norm(chapter.url))) {
         READ_CHAPTERS.unshift(chapter.url);
+        saveState();
     }
 
     saveState();
@@ -127,6 +144,7 @@ function navigate(path) {
 window.addEventListener('popstate', handleLocation);
 
 async function handleLocation() {
+    loadState();
     const path = window.location.pathname;
     const params = new URLSearchParams(window.location.search);
     const targetUrl = params.get('url');
@@ -363,7 +381,7 @@ function displayHome(data, page, fromCache = false) {
                         <div class="flex flex-wrap gap-1.5 md:gap-2">
                             ${(m.chapters && m.chapters.length > 0) ? m.chapters.map(ch => {
             const readPath = `/read?url=${encodeURIComponent(ch.url)}&title=${encodeURIComponent(`${clean(m.title)} - ${clean(ch.name)}`)}`;
-            const isRead = READ_CHAPTERS.includes(ch.url);
+            const isRead = READ_CHAPTERS.some(u => norm(u) === norm(ch.url));
             return `
                                 <div onclick="event.stopPropagation(); navigate('${readPath}')"
                                     class="${isRead ? 'bg-primary/20 border-primary/30' : 'bg-primary/10 border-transparent'} border hover:bg-primary/30 px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg transition-all flex items-center gap-1.5 active:scale-95">
@@ -458,7 +476,7 @@ async function renderDetail(url) {
             const lastCh = [...d.chapters].sort((a, b) => parseFloat(b.num) - parseFloat(a.num))[0];
 
             if (firstCh) {
-                const isFirstRead = READ_CHAPTERS.includes(firstCh.url);
+                const isFirstRead = READ_CHAPTERS.some(u => norm(u) === norm(firstCh.url));
                 qaEl.innerHTML += `
                 <button onclick="navigate('/read?url=${encodeURIComponent(firstCh.url)}&mangaUrl=${encodeURIComponent(url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(firstCh.name)}`)}')"
                     class="${isFirstRead ? 'bg-primary/20 border-primary' : 'bg-white/10 hover:bg-white/20 border-white/10'} border px-6 py-3 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 flex items-center gap-3">
@@ -466,7 +484,7 @@ async function renderDetail(url) {
                 </button>`;
             }
             if (lastCh && lastCh !== firstCh) {
-                const isLastRead = READ_CHAPTERS.includes(lastCh.url);
+                const isLastRead = READ_CHAPTERS.some(u => norm(u) === norm(lastCh.url));
                 qaEl.innerHTML += `
                 <button onclick="navigate('/read?url=${encodeURIComponent(lastCh.url)}&mangaUrl=${encodeURIComponent(url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(lastCh.name)}`)}')"
                     class="bg-gradient-to-r from-primary to-secondary hover:brightness-110 px-8 py-3 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-[0_0_20px_rgba(255,69,0,0.3)] hover:-translate-y-1 flex items-center gap-3">
@@ -475,7 +493,7 @@ async function renderDetail(url) {
             }
 
             chaptersEl.innerHTML = d.chapters.map((c, i) => {
-                const isRead = READ_CHAPTERS.includes(c.url);
+                const isRead = READ_CHAPTERS.some(u => norm(u) === norm(c.url));
                 const isAlt = url.includes('1668manga.com');
                 const readPath = `/read?url=${encodeURIComponent(c.url)}&mangaUrl=${encodeURIComponent(url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(c.name)}`)}${isAlt ? '&alt=1' : ''}`;
                 return `<button onclick="navigate('${readPath}')"
@@ -602,8 +620,8 @@ async function renderReader(url, title) {
 
         if (data.prevUrl) {
             const decodedPrev = decodeURIComponent(data.prevUrl).split('?')[0];
-            // FIX #3: Extract chapter name from prevUrl if possible, else use "Previous Chapter"
-            const prevChapterName = extractChapterNameFromUrl(decodedPrev);
+            // FIX #3: Use data.prevName if provided by API, else extract from URL
+            const prevChapterName = data.prevName || extractChapterNameFromUrl(decodedPrev);
             const prevTitleParam = mangaTitle && prevChapterName
                 ? `${mangaTitle} - ${prevChapterName}`
                 : (mangaTitle ? `${mangaTitle} - Previous Chapter` : 'Previous Chapter');
@@ -616,8 +634,8 @@ async function renderReader(url, title) {
 
         if (data.nextUrl) {
             const decodedNext = decodeURIComponent(data.nextUrl).split('?')[0];
-            // FIX #3: Extract chapter name from nextUrl if possible, else use "Next Chapter"
-            const nextChapterName = extractChapterNameFromUrl(decodedNext);
+            // FIX #3: Use data.nextName if provided by API, else extract from URL
+            const nextChapterName = data.nextName || extractChapterNameFromUrl(decodedNext);
             const nextTitleParam = mangaTitle && nextChapterName
                 ? `${mangaTitle} - ${nextChapterName}`
                 : (mangaTitle ? `${mangaTitle} - Next Chapter` : 'Next Chapter');
