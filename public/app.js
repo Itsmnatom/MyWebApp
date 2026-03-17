@@ -142,7 +142,9 @@ async function handleLocation() {
     document.getElementById('main-header').classList.remove('-translate-y-full');
     document.body.style.overflow = 'auto';
     document.documentElement.style.overflow = 'auto';
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    window.scrollTo({ top: 0, behavior: 'instant' }); 
+    const rView = document.getElementById('reader-view');
+    if (rView) rView.scrollTop = 0;
 
     if (path === '/read' && targetUrl) {
         document.body.style.overflow = 'hidden';
@@ -508,7 +510,13 @@ async function renderDetail(url) {
 // ══════════════════════════════════════════════════
 
 async function renderReader(url, title) {
-    document.getElementById('r-title').innerText = title;
+    // Smart Title parsing
+    let displayTitle = title;
+    if (title === 'Next' || title === 'Previous' || !title) {
+        const match = url.match(/ch(?:apter)?-?([\d.]+)/i);
+        displayTitle = match ? `Chapter ${match[1]}` : (title || 'Reading...');
+    }
+    document.getElementById('r-title').innerText = displayTitle;
 
     const container = document.getElementById('r-images');
     const navBottom = document.getElementById('reader-nav-bottom');
@@ -597,7 +605,9 @@ async function renderReader(url, title) {
 
         if (data.prevUrl) {
             const decodedPrev = decodeURIComponent(data.prevUrl).split('?')[0];
-            const prevPath = `/read?url=${encodeURIComponent(decodedPrev)}&title=Previous${mangaUrlParam}`;
+            const prevMatch = decodedPrev.match(/ch(?:apter)?-?([\d.]+)/i);
+            const prevTitle = prevMatch ? `Chapter ${prevMatch[1]}` : 'Previous';
+            const prevPath = `/read?url=${encodeURIComponent(decodedPrev)}&title=${encodeURIComponent(prevTitle)}${mangaUrlParam}`;
             navBottom.innerHTML += `<button onclick="navigate('${prevPath}')"
                 class="glass hover:bg-white/10 px-6 py-3.5 rounded-2xl text-xs font-bold tracking-widest uppercase transition-all duration-300 hover:-translate-x-1 flex items-center gap-3">
                 <i class="fas fa-arrow-left opacity-70"></i> Prev Chapter
@@ -606,7 +616,9 @@ async function renderReader(url, title) {
 
         if (data.nextUrl) {
             const decodedNext = decodeURIComponent(data.nextUrl).split('?')[0];
-            const nextPath = `/read?url=${encodeURIComponent(decodedNext)}&title=Next${mangaUrlParam}`;
+            const nextMatch = decodedNext.match(/ch(?:apter)?-?([\d.]+)/i);
+            const nextTitle = nextMatch ? `Chapter ${nextMatch[1]}` : 'Next';
+            const nextPath = `/read?url=${encodeURIComponent(decodedNext)}&title=${encodeURIComponent(nextTitle)}${mangaUrlParam}`;
             navBottom.innerHTML += `<button onclick="navigate('${nextPath}')"
                 class="bg-gradient-to-r from-primary to-secondary hover:brightness-110 px-8 py-3.5 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-[0_0_20px_rgba(255,69,0,0.3)] hover:-translate-y-1 flex items-center gap-3">
                 Next Chapter <i class="fas fa-arrow-right"></i>
