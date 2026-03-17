@@ -503,9 +503,9 @@
         <!-- Top Bar -->
         <div class="fixed top-0 inset-x-0 bg-gradient-to-b from-black/90 to-transparent pt-4 pb-12 px-4 flex justify-between items-start z-50 pointer-events-none transition-transform duration-300"
             id="reader-topbar">
-            <button onclick="window.history.back()"
-                class="pointer-events-auto group px-4 py-2 rounded-full glass hover:bg-white/10 flex items-center gap-2 transition-colors">
-                <i class="fas fa-arrow-left text-sm opacity-70 group-hover:-translate-x-1 transition-transform"></i>
+            <button onclick="exitToDetail()"
+                class="pointer-events-auto group px-4 py-2 rounded-full glass hover:bg-white/10 flex items-center gap-2 transition-all duration-300 active:scale-95 shadow-lg">
+                <i class="fas fa-arrow-left text-xs opacity-50 group-hover:opacity-100 transition-opacity"></i>
                 <span class="text-xs font-bold tracking-widest uppercase">Go Back</span>
             </button>
 
@@ -537,7 +537,7 @@
             </div>
             <div id="reader-nav-bottom" class="flex justify-center flex-wrap gap-4 mb-12 w-full max-w-2xl px-4"></div>
 
-            <button onclick="window.history.back()"
+            <button onclick="exitToDetail()"
                 class="text-gray-500 hover:text-white text-sm font-bold tracking-widest uppercase transition-colors flex items-center gap-2">
                 <i class="fas fa-home"></i> Return to Details
             </button>

@@ -832,6 +832,16 @@ function handleImageClick(e) {
     document.querySelectorAll('#reader-topbar, #reader-floats, #reader-footer').forEach(el => el.classList.toggle('ui-hidden'));
 }
 
+function exitToDetail() {
+    const params = new URLSearchParams(window.location.search);
+    const mangaUrl = params.get('mangaUrl');
+    if (mangaUrl) {
+        navigate(`/manga?url=${encodeURIComponent(mangaUrl)}`);
+    } else {
+        window.history.back();
+    }
+}
+
 // ══════════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════════
