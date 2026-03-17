@@ -61,6 +61,12 @@ function saveState() {
     localStorage.setItem('sm_read_chapters', JSON.stringify(READ_CHAPTERS.slice(0, 500)));
 }
 
+function loadState() {
+    BOOKMARKS = JSON.parse(localStorage.getItem('sm_bookmarks') || '[]');
+    HISTORY = JSON.parse(localStorage.getItem('sm_history') || '[]');
+    READ_CHAPTERS = JSON.parse(localStorage.getItem('sm_read_chapters') || '[]');
+}
+
 function toggleBookmark(manga) {
     const idx = BOOKMARKS.findIndex(b => b.url === manga.url);
     if (idx > -1) BOOKMARKS.splice(idx, 1);
@@ -124,6 +130,7 @@ function navigate(path) {
 window.addEventListener('popstate', handleLocation);
 
 async function handleLocation() {
+    loadState(); // Refresh state on every navigation
     const path = window.location.pathname;
     const params = new URLSearchParams(window.location.search);
     const targetUrl = params.get('url');
@@ -559,8 +566,8 @@ async function renderReader(url, title) {
         // Update History
         if (data.images?.length > 0) {
             const mangaTitle = title.split(' - ')[0] || title;
-            const params = new URLSearchParams(window.location.search);
-            const mangaUrl = params.get('mangaUrl');
+            const rParams = new URLSearchParams(window.location.search);
+            const mangaUrl = rParams.get('mangaUrl');
 
             if (mangaUrl) {
                 addToHistory({
