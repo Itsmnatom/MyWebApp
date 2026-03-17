@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="referrer" content="no-referrer">
     <meta name="description" content="SpeedManga - Ultra fast manga reader with premium experience.">
     <title>SpeedManga - Premium Experience</title>
@@ -127,8 +127,10 @@
             width: 100%;
             display: block;
             margin: 0;
-            background-color: #0A0A0A;
+            background-color: #000000;
             min-height: 400px;
+            cursor: zoom-in;
+            object-fit: contain;
         }
         
         @media (min-width: 768px) {
@@ -381,7 +383,7 @@
         </div>
 
         <!-- Images Container -->
-        <div id="r-images" class="flex flex-col items-center min-h-screen reader-image-container pt-0 pb-20"></div>
+        <div id="r-images" class="flex flex-col items-center min-h-screen reader-image-container pt-0 pb-4"></div>
 
         <!-- Next/Prev Footer -->
         <div id="reader-footer" class="p-6 md:p-12 text-center bg-gradient-to-t from-black to-transparent flex flex-col items-center transition-all duration-300">

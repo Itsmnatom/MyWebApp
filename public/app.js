@@ -647,3 +647,4 @@ async function renderReader(url, title) {
 //  INIT
 // ══════════════════════════════════════════════════
 window.onload = handleLocation;
+function handleImageClick(e) { ['reader-topbar', 'reader-floats', 'reader-footer'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.toggle('ui-hidden'); }); }
