@@ -38,6 +38,13 @@ process.on('unhandledRejection', (reason, promise) => {
 
 app.use(cors());
 app.use(express.json());
+
+// SPA Routes — must be before express.static so refreshing these paths returns index.html
+const SPA_ROUTES = ['/', '/history', '/bookmarks', '/manga', '/read', '/alt'];
+SPA_ROUTES.forEach(r => {
+    app.get(r, (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ══════════════════════════════════════════════════
@@ -86,8 +93,10 @@ async function getGotScraping() {
 async function fetchHtml(url) {
     try {
         const gotScraping = await getGotScraping();
-        
-        let targetUrl = url;
+        // Decode first in case it's already encoded, then encode strictly
+        const normalizedUrl = encodeURI(decodeURI(url));
+
+        let targetUrl = normalizedUrl;
         let options = {
             headerGeneratorOptions: {
                 browsers: [{ name: 'chrome', minVersion: 115 }],
@@ -95,7 +104,7 @@ async function fetchHtml(url) {
                 operatingSystems: ['windows']
             },
             http2: true,
-            timeout: { request: 30000 }, 
+            timeout: { request: 30000 },
             retry: { limit: 1 }
         };
 
@@ -104,7 +113,7 @@ async function fetchHtml(url) {
             targetUrl = `http://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(url)}`;
             options.http2 = false; // ScraperAPI works better with http1
             console.log('[SpeedManga] Masking through ScraperAPI...');
-        } 
+        }
         // 2. Else if a Generic Proxy is provided
         else if (PROXY_URL) {
             options.proxyUrl = PROXY_URL;
@@ -129,7 +138,7 @@ async function fetchHtml(url) {
 // ══════════════════════════════════════════════════
 //  FILTER + SORT (ตัด 18+, ดัน Manhwa)
 // ══════════════════════════════════════════════════
-const BAD_WORDS = ['18+', '18 +', 'nc-17', 'smut', 'mature', 'ผู้ใหญ่', 'ntr', 'adult'];
+const BAD_WORDS = ['18+', '18 +', 'nc-17', 'smut', 'mature', 'ผู้ใหญ่', 'ntr', 'adult', 'Adult'];
 
 function filterAndSort(items) {
     const seen = new Set();
@@ -224,10 +233,10 @@ async function scrapeHome(page) {
             if (h && t && (t.includes('ตอนที่') || t.includes('Chapter') || t.includes('Ch.'))) {
                 if (chapters.length < 5) {
                     const timeEl = $(a).parent().find('span').first();
-                    chapters.push({ 
-                        name: t, 
-                        url: h, 
-                        time: timeEl.text().trim() || 'NEW' 
+                    chapters.push({
+                        name: t,
+                        url: h,
+                        time: timeEl.text().trim() || 'NEW'
                     });
                 }
             }
@@ -318,7 +327,7 @@ app.get('/api/manga/details', async (req, res) => {
             const label = $(el).contents().filter((_, node) => node.nodeType === 3).text().trim()
                 || $(el).find('b, span').first().text().trim();
             const value = $(el).find('i, a, span:last-child').first().text().trim();
-            
+
             if (label && value && label.length < 30) {
                 const cleanLabel = label.replace(':', '').trim();
                 if (cleanLabel) info[cleanLabel] = value;
@@ -396,15 +405,14 @@ app.get('/api/manga/read', async (req, res) => {
 
     console.log(`[API] Read requested: ${chapterUrl}`);
     const nocache = req.query.nocache === '1';
-    
+
     if (!nocache) {
         const cached = CACHE.read.get(chapterUrl);
         if (cached) return res.json(cached);
     }
 
     try {
-        const finalUrl = encodeURI(chapterUrl);
-        const html = await fetchHtml(finalUrl);
+        const html = await fetchHtml(chapterUrl);
 
         // --- Faster Extraction: Raw Regex (Bypassing DOM if possible) ---
         let imageUrls = [];
@@ -437,14 +445,18 @@ app.get('/api/manga/read', async (req, res) => {
                 // Secondary JSON search
                 const mJson = scripts.match(/"images"\s*:\s*(\[[^\]]+\])/);
                 if (mJson) {
-                    try { imageUrls = JSON.parse(mJson[1]); } catch (e) {}
+                    try { imageUrls = JSON.parse(mJson[1]); } catch (e) { }
                 }
-                
+
                 // Final DOM Scrape
                 if (imageUrls.length === 0) {
                     $('.reading-content img, .wp-manga-chapter-img, #readerarea img, .page-break img, .chapter-content img, .entry-content img').each((_, img) => {
-                        const v = $(img).attr('data-src') || $(img).attr('data-lazy-src') || $(img).attr('data-cfsrc') || $(img).attr('src') || $(img).attr('data-original');
-                        if (v && v.startsWith('http')) imageUrls.push(v.trim());
+                        let v = $(img).attr('data-src') || $(img).attr('data-lazy-src') || $(img).attr('data-cfsrc') || $(img).attr('src') || $(img).attr('data-original');
+                        if (v) {
+                            v = v.trim();
+                            if (v.startsWith('//')) v = 'https:' + v;
+                            if (v.startsWith('http')) imageUrls.push(v);
+                        }
                     });
                 }
             }
@@ -483,15 +495,31 @@ app.get('/api/proxy', async (req, res) => {
     if (!imageUrl) return res.status(400).send('No image URL');
 
     try {
-        // ใช้ got (version 11.8.6) ที่มีความเสถียรสูงกว่า fetch ในการดึงรูป
+        let referer = TARGET_SITE;
+        try {
+            const urlObj = new URL(imageUrl);
+            referer = urlObj.origin + '/';
+        } catch (e) {}
+
+        const imageUrlLower = imageUrl.toLowerCase();
+        
+        // SpeedManga sources (including various CDNs like imgez.org) 
+        // usually work best with the primary site as referer.
+        if (imageUrlLower.includes('imgez.org') || imageUrlLower.includes('speed-manga.net')) {
+            referer = 'https://speed-manga.net/';
+        }
+
         const response = await got(imageUrl, {
             headers: {
-                'referer': TARGET_SITE,
+                'referer': referer,
                 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+                'accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                'connection': 'keep-alive'
             },
-            timeout: { request: 10000 },
-            retry: { limit: 1 },
+            timeout: { request: 15000 },
+            followRedirect: true,
+            maxRedirects: 10,
+            retry: { limit: 2 },
             responseType: 'buffer',
             https: { rejectUnauthorized: false } // ป้องกันปัญหา Cert ของบางเว็บบรรยายมังงะ
         });
@@ -509,10 +537,190 @@ app.get('/api/proxy', async (req, res) => {
     }
 });
 
-// SPA Routing
-app.get(['/', '/manga', '/read'], (_req, res) =>
-    res.sendFile(path.join(__dirname, 'public', 'index.html'))
-);
+// ══════════════════════════════════════════════════
+//  API: ALTERNATIVE SOURCE (1668manga.com)
+// ══════════════════════════════════════════════════
+const ALT_SITE = 'https://1668manga.com/';
+
+app.get('/api/alt/read', async (req, res) => {
+    const chapterUrl = req.query.url;
+    if (!chapterUrl) return res.status(400).json({ error: 'No URL provided' });
+
+    try {
+        const html = await fetchHtml(chapterUrl);
+        const $ = cheerio.load(html);
+        let imageUrls = [];
+
+        // 1. Try direct images
+        $('#readerarea img, .readerarea img, .reading-content img, .page-break img').each((_, img) => {
+            const src = $(img).attr('data-src') || $(img).attr('data-lazy-src') || $(img).attr('src');
+            if (src && (src.includes('1668manga.com') || src.includes('168toon.com')) && !src.includes('logo')) {
+                imageUrls.push(src.trim());
+            }
+        });
+
+        // 2. Look for JSON (ts_reader.run pattern) - supporting Base64 obfuscation
+        if (imageUrls.length === 0) {
+            $('script').each((i, el) => {
+                let content = $(el).html() || '';
+                const srcValue = $(el).attr('src') || '';
+                
+                // Decode Base64 encoded scripts if present
+                if (srcValue.includes('base64,')) {
+                    try {
+                        const parts = srcValue.split('base64,');
+                        if (parts[1]) {
+                            const decoded = Buffer.from(parts[1], 'base64').toString('utf-8');
+                            if (decoded.includes('ts_reader')) {
+                                content = decoded;
+                            }
+                        }
+                    } catch (e) {}
+                }
+
+                if (content.includes('ts_reader.run')) {
+                    const m = content.match(/ts_reader\.run\(([\s\S]+?)\);/);
+                    if (m) {
+                        try {
+                            const data = JSON.parse(m[1]);
+                            if (data.sources?.[0]?.images) {
+                                imageUrls = data.sources[0].images;
+                                console.log(`[API:ALT:READ] Method 2 (ts_reader) found ${imageUrls.length} images`);
+                            }
+                        } catch (e) {}
+                    }
+                }
+            });
+        }
+
+        // 3. Fallback: Search for any manga-looking images in the body
+        if (imageUrls.length === 0) {
+             const fallbackRegex = /"([^"]+(?:cdn\.1668manga\.com|img\.168toon\.com)\/[^"]+\.(?:jpe?g|webp|png|avif)(?:\?[^"]*)?)"/gi;
+             let fmatch;
+             while ((fmatch = fallbackRegex.exec(html)) !== null) {
+                 const s = fmatch[1].replace(/\\\//g, '/');
+                 if (!s.includes('logo') && !s.includes('banner') && !s.includes('avatar') && !s.includes('cropped') && !s.includes('icon')) {
+                     imageUrls.push(s);
+                 }
+             }
+             if (imageUrls.length > 0) console.log(`[API:ALT:READ] Method 3 (Fallback) found ${imageUrls.length} images`);
+        }
+
+        imageUrls = [...new Set(imageUrls)].filter(s => s && s.startsWith('http') && !s.includes('logo-1668manga-png'));
+        
+        // Find Prev/Next
+        const prevUrl = $('.ch-prev-btn, .nextprev a.prev').attr('href') || null;
+        const nextUrl = $('.ch-next-btn, .nextprev a.next').attr('href') || null;
+
+        res.json({ images: imageUrls, prevUrl, nextUrl });
+    } catch (e) {
+        console.error('[API:ALT:READ] Error:', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/alt/manga', async (req, res) => {
+    let mangaUrl = req.query.url;
+    if (!mangaUrl) return res.status(400).json({ error: 'No URL provided' });
+
+    try {
+        let html = await fetchHtml(mangaUrl);
+        let $ = cheerio.load(html);
+
+        // If this is actually a chapter page, find the manga link
+        const titleText = $('.entry-title').text().trim();
+        const hasInfotable = $('.infotable').length > 0;
+        const hasReader = $('#readerarea').length > 0;
+
+        if (hasReader || !hasInfotable || titleText.includes('ตอนที่') || titleText.includes('Chapter')) {
+            const realMangaUrl = $('.allc a').attr('href') || $('.breadcrumb a[href*="/manga/"]').first().attr('href');
+            if (realMangaUrl && realMangaUrl !== mangaUrl) {
+                console.log(`[API:ALT:MANGA] Redirecting from chapter to manga: ${realMangaUrl}`);
+                mangaUrl = realMangaUrl;
+                html = await fetchHtml(mangaUrl);
+                $ = cheerio.load(html);
+            }
+        }
+
+        const title = $('.entry-title').text().trim() || $('h1.entry-title').text().trim();
+        const imgEl = $('.thumb img').first();
+        const image = imgEl.attr('data-src') || imgEl.attr('src');
+        const description = $('.entry-content p').text().trim() || $('.description').text().trim();
+        
+        const info = {};
+        $('.infotable tr').each((_, el) => {
+            const label = $(el).find('td:first-child').text().replace(':', '').trim();
+            const value = $(el).find('td:last-child').text().trim();
+            if (label && value) info[label] = value;
+        });
+
+        const chapters = [];
+        $('#chapterlist li').each((_, el) => {
+            const a = $(el).find('a');
+            const name = a.find('.chapternum').text().trim() || a.text().trim().replace(/\s+/g, ' ');
+            const url = a.attr('href');
+            const date = a.find('.chapterdate').text().trim();
+            if (url) chapters.push({ name, url, date });
+        });
+
+        res.json({ title, image, description, info, chapters });
+    } catch (e) {
+        console.error('[API:ALT:MANGA] Error:', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/alt/home', async (req, res) => {
+    try {
+        const html = await fetchHtml(ALT_SITE);
+        const $ = cheerio.load(html);
+        const results = [];
+        const seen = new Set();
+
+        // 1. Popular (BS)
+        $('.listupd .bs').each((_, el) => {
+            const a = $(el).find('a').first();
+            let url = a.attr('href');
+            if (!url || seen.has(url)) return;
+            seen.add(url);
+
+            const title = a.attr('title') || $(el).find('.tt').text().trim();
+            const imgEl = $(el).find('img');
+            const image = imgEl.attr('data-src') || imgEl.attr('src');
+            const lastChapter = $(el).find('.epxs').text().trim();
+            
+            results.push({ title, url, image, lastChapter, source: '1668manga' });
+        });
+
+        // 2. Latest Updates (UTAO)
+        $('.listupd .utao').each((_, el) => {
+            const mangaLink = $(el).find('.imgu a').attr('href') || $(el).find('a.series').attr('href');
+            if (!mangaLink || seen.has(mangaLink)) return;
+            seen.add(mangaLink);
+
+            const title = $(el).find('h4').text().trim() || $(el).find('.imgu img').attr('title');
+            const imgEl = $(el).find('img');
+            const image = imgEl.attr('data-src') || imgEl.attr('src');
+            const lastChapter = $(el).find('.luf ul li:first-child a').text().trim();
+
+            results.push({ title, url: mangaLink, image, lastChapter, source: '1668manga' });
+        });
+
+        res.json({ updates: results });
+    } catch (e) {
+        console.error('[API:ALT:HOME] Error:', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// SPA Routing — serve index.html for any non-API path (fixes page refresh on /history, /bookmarks, etc.)
+app.use((req, res, next) => {
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/proxy')) {
+        res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    } else {
+        next();
+    }
+});
 
 // ══════════════════════════════════════════════════
 //  START

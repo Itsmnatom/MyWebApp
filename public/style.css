@@ -221,11 +221,17 @@ body {
 .ui-hidden {
     transform: translateY(-100%) !important;
     opacity: 0 !important;
+    visibility: hidden !important;
     pointer-events: none !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 #reader-floats.ui-hidden {
-    transform: translateY(20px);
+    transform: translateY(40px) scale(0.8) !important;
+}
+
+#reader-footer.ui-hidden {
+    transform: translateY(100%) !important;
 }
 
 @media (max-width: 768px) {

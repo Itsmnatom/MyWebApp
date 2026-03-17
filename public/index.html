@@ -118,8 +118,8 @@
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .line-clamp-5 { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-clamp: 2; overflow: hidden; }
+        .line-clamp-5 { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; line-clamp: 5; overflow: hidden; }
 
         /* Reader Customization */
         .reader-image-container img {
@@ -139,6 +139,15 @@
                 margin: 0 auto;
             }
         }
+        /* Reader UI Toggle */
+        .ui-hidden {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transform: translateY(-20px);
+        }
+        #reader-floats.ui-hidden {
+            transform: translateY(20px);
+        }
     </style>
 </head>
 
@@ -152,12 +161,21 @@
             <a href="javascript:navigate('/')" class="font-display text-2xl md:text-3xl font-black tracking-tighter hover:scale-105 transition-transform duration-300">
                 SPEED<span class="text-gradient">MANGA</span>
             </a>
-            <div class="flex items-center gap-3 bg-dark-800/80 border border-white/5 px-4 py-1.5 rounded-full shadow-inner">
-                <div class="relative flex h-2.5 w-2.5">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+            <div class="flex items-center gap-4 md:gap-6">
+                <!-- Navigation Links -->
+                <div class="flex items-center gap-4 md:gap-6 mr-2 md:mr-6 border-r border-white/10 pr-4 md:pr-6">
+                    <a href="javascript:navigate('/history')" class="text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-primary transition-colors">History</a>
+                    <a href="javascript:navigate('/bookmarks')" class="text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-blue-400 transition-colors">Bookmarks</a>
+                    <a href="javascript:navigate('/alt')" class="text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-amber-400 transition-colors">Alternative</a>
                 </div>
-                <span class="text-[10px] md:text-xs font-bold tracking-wider text-gray-300 uppercase mt-0.5">Engine v4</span>
+
+                <div class="flex items-center gap-3 bg-dark-800/80 border border-white/5 px-4 py-1.5 rounded-full shadow-inner">
+                    <div class="relative flex h-2.5 w-2.5">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                    </div>
+                    <span class="text-[10px] md:text-xs font-bold tracking-wider text-gray-300 uppercase mt-0.5">Engine v4</span>
+                </div>
             </div>
         </div>
     </nav>
@@ -192,35 +210,6 @@
             </div>
         </div>
 
-        <!-- History & Bookmarks Sections -->
-        <div class="container mx-auto px-4 md:px-6 mb-12 flex flex-col gap-12">
-            <!-- Continue Reading -->
-            <div id="history-section" class="hidden">
-                <div class="flex items-center gap-3 mb-6">
-                    <div class="w-1.5 h-7 bg-primary rounded-full"></div>
-                    <h2 class="text-xl font-bold tracking-tight uppercase font-display flex items-center gap-2">
-                        Continue <span class="text-gradient">Reading</span>
-                    </h2>
-                </div>
-                <div id="history-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    <!-- History cards injected here -->
-                </div>
-            </div>
-
-            <!-- Bookmarks -->
-            <div id="bookmarks-section" class="hidden">
-                <div class="flex items-center gap-3 mb-6">
-                    <div class="w-1.5 h-7 bg-blue-500 rounded-full"></div>
-                    <h2 class="text-xl font-bold tracking-tight uppercase font-display flex items-center gap-2">
-                        My <span class="text-blue-500">Bookmarks</span>
-                    </h2>
-                </div>
-                <div id="bookmarks-container" class="flex gap-4 overflow-x-auto hide-scrollbar pb-4 snap-x snap-mandatory">
-                    <!-- Bookmark cards injected here -->
-                </div>
-            </div>
-        </div>
-
         <!-- Latest Updates Section -->
         <div class="container mx-auto px-4 md:px-6">
             <div class="flex items-center justify-between mb-8">
@@ -246,10 +235,55 @@
                         PAGE 1
                     </span>
                 </div>
-                <button id="btn-next" class="bg-gradient-to-r from-primary to-secondary hover:from-secondary hover:to-primary px-5 md:px-8 py-3 rounded-2xl font-bold transition-all duration-300 shadow-[0_4px_20px_rgba(255,69,0,0.4)] hover:-translate-y-0.5 flex items-center gap-2">
+                <button id="btn-next" class="bg-gradient-to-r from-primary to-secondary hover:from-secondary hover:to-primary px-5 md:px-8 py-3 rounded-2xl font-bold transition-all duration-300 shadow-[0_4px_20_rgba(255,69,0,0.4)] hover:-translate-y-0.5 flex items-center gap-2">
                     Next <i class="fas fa-arrow-right text-sm"></i>
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- ============================================
+         HISTORY VIEW
+    ============================================ -->
+    <div id="history-view" class="hidden min-h-screen pb-20 pt-24 px-4 md:px-8 max-w-7xl mx-auto">
+        <div class="flex items-center gap-3 mb-10">
+            <div class="w-2 h-8 bg-primary rounded-full shadow-[0_0_15px_rgba(255,69,0,0.5)]"></div>
+            <h2 class="text-2xl md:text-4xl font-black tracking-tight uppercase font-display">
+                Continue <span class="text-gradient">Reading</span>
+            </h2>
+        </div>
+        <div id="history-page-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            <!-- History cards injected here -->
+        </div>
+    </div>
+
+    <!-- ============================================
+         BOOKMARKS VIEW
+    ============================================ -->
+    <div id="bookmarks-view" class="hidden min-h-screen pb-20 pt-24 px-4 md:px-8 max-w-7xl mx-auto">
+        <div class="flex items-center gap-3 mb-10">
+            <div class="w-2 h-8 bg-blue-500 rounded-full shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
+            <h2 class="text-2xl md:text-4xl font-black tracking-tight uppercase font-display">
+                My <span class="text-blue-400">Archives</span>
+            </h2>
+        </div>
+        <div id="bookmarks-page-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+            <!-- Bookmark cards injected here -->
+        </div>
+    </div>
+
+    <!-- ============================================
+         ALTERNATIVE VIEW (1668manga)
+    ============================================ -->
+    <div id="alt-view" class="hidden min-h-screen pb-20 pt-24 px-4 md:px-8 max-w-7xl mx-auto">
+        <div class="flex items-center gap-3 mb-10">
+            <div class="w-2 h-8 bg-amber-500 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.5)]"></div>
+            <h2 class="text-2xl md:text-4xl font-black tracking-tight uppercase font-display">
+                1668manga <span class="text-amber-500">Archives</span>
+            </h2>
+        </div>
+        <div id="alt-page-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+            <!-- Alt cards injected here -->
         </div>
     </div>
 
@@ -344,7 +378,7 @@
         <div id="r-images" class="flex flex-col items-center min-h-screen reader-image-container pt-0 pb-20"></div>
 
         <!-- Next/Prev Footer -->
-        <div class="p-6 md:p-12 text-center bg-gradient-to-t from-black to-transparent flex flex-col items-center">
+        <div id="reader-footer" class="p-6 md:p-12 text-center bg-gradient-to-t from-black to-transparent flex flex-col items-center transition-all duration-300">
             <div class="w-full max-w-3xl h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent mb-8"></div>
             <div id="reader-nav-bottom" class="flex justify-center flex-wrap gap-4 mb-12 w-full max-w-2xl px-4"></div>
             
@@ -357,7 +391,7 @@
     <!-- ============================================
          APP SCRIPT
     ============================================ -->
-    <script src="app.js"></script>
+    <script src="/app.js"></script>
     <script>
         // Reader scroll hide/show UI logic
         const readerView = document.getElementById('reader-view');
@@ -367,17 +401,17 @@
         readerView.addEventListener('scroll', () => {
             const currentScrollY = readerView.scrollTop;
             const readerFloats = document.getElementById('reader-floats');
+            const readerFooter = document.getElementById('reader-footer');
             
-            // If UI is explicitly hidden via click, don't show on scroll up immediately 
-            // unless we've scrolled a decent amount or logic dictates otherwise.
-            // For now, let scroll show/hide normally if not in forced hidden mode.
-            
-            if (currentScrollY > 100 && currentScrollY > lastScrollY) {
+            // Hide UI elements on scroll down, show on scroll up
+            if (currentScrollY > 50 && currentScrollY > lastScrollY) {
                 readerTopbar.classList.add('ui-hidden');
                 readerFloats.classList.add('ui-hidden');
-            } else {
+                if (readerFooter) readerFooter.classList.add('ui-hidden');
+            } else if (currentScrollY < lastScrollY) {
                 readerTopbar.classList.remove('ui-hidden');
                 readerFloats.classList.remove('ui-hidden');
+                if (readerFooter) readerFooter.classList.remove('ui-hidden');
             }
             lastScrollY = currentScrollY;
         }, { passive: true });
