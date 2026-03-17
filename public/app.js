@@ -1,6 +1,12 @@
 /**
  * SpeedManga - Frontend App (Premium Aesthetic v3)
  * Featuring glassmorphism, micro-animations, and dynamic blurred backgrounds.
+ *
+ * FIXES:
+ * 1. Reader scroll: fixed inset-0 + overflow-y-auto (handled in CSS/HTML)
+ * 2. Image centering: 100% width on all devices (handled in CSS/HTML)
+ * 3. Chapter title bug fix: carry original manga title when navigating Next/Prev
+ * 4. Decimal chapter numbers: support chapters like 123.5
  */
 
 'use strict';
@@ -19,16 +25,6 @@ function proxify(url) {
     if (!url) return 'https://placehold.co/300x450?text=NO+IMAGE&font=outfit';
     if (url.startsWith('http')) return `${API}/proxy?url=${encodeURIComponent(url)}`;
     return url;
-}
-
-function norm(url) {
-    if (!url) return '';
-    try {
-        const d = decodeURIComponent(url);
-        return d.split('?')[0].replace(/\/$/, '').toLowerCase().trim();
-    } catch (e) {
-        return url.split('?')[0].replace(/\/$/, '').toLowerCase().trim();
-    }
 }
 
 function spinnerHTML(text) {
@@ -56,7 +52,6 @@ function getBadgeUI(badge) {
     </div>`;
 }
 
-
 // ══════════════════════════════════════════════════
 //  PERSISTENCE (Bookmarks & History)
 // ══════════════════════════════════════════════════
@@ -71,12 +66,6 @@ function saveState() {
     localStorage.setItem('sm_read_chapters', JSON.stringify(READ_CHAPTERS.slice(0, 500)));
 }
 
-function loadState() {
-    BOOKMARKS = JSON.parse(localStorage.getItem('sm_bookmarks') || '[]');
-    HISTORY = JSON.parse(localStorage.getItem('sm_history') || '[]');
-    READ_CHAPTERS = JSON.parse(localStorage.getItem('sm_read_chapters') || '[]');
-}
-
 function toggleBookmark(manga) {
     const idx = BOOKMARKS.findIndex(b => b.url === manga.url);
     if (idx > -1) BOOKMARKS.splice(idx, 1);
@@ -88,7 +77,6 @@ function toggleBookmark(manga) {
 }
 
 function addToHistory(manga, chapter) {
-    // manga: { title, url, image }, chapter: { name, url }
     const entry = {
         title: manga.title,
         mangaUrl: manga.url,
@@ -99,11 +87,11 @@ function addToHistory(manga, chapter) {
     };
     HISTORY = [entry, ...HISTORY.filter(h => h.mangaUrl !== manga.url)].slice(0, 15);
 
-    // Also track as read chapter
-    if (chapter.url && !READ_CHAPTERS.some(u => norm(u) === norm(chapter.url))) {
+    if (chapter.url && !READ_CHAPTERS.includes(chapter.url)) {
         READ_CHAPTERS.unshift(chapter.url);
-        saveState();
     }
+
+    saveState();
 }
 
 function renderBookmarkBtn(mangaUrl) {
@@ -139,7 +127,6 @@ function navigate(path) {
 window.addEventListener('popstate', handleLocation);
 
 async function handleLocation() {
-    loadState(); // Refresh state on every navigation
     const path = window.location.pathname;
     const params = new URLSearchParams(window.location.search);
     const targetUrl = params.get('url');
@@ -158,13 +145,12 @@ async function handleLocation() {
     document.getElementById('main-header').classList.remove('-translate-y-full');
     document.body.style.overflow = 'auto';
     document.documentElement.style.overflow = 'auto';
-    window.scrollTo({ top: 0, behavior: 'instant' }); 
-    const rView = document.getElementById('reader-view');
-    if (rView) rView.scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: 'instant' });
 
     if (path === '/read' && targetUrl) {
-        document.body.style.overflow = ''; // Allow natural scroll for browser URL bar hiding
-        document.documentElement.style.overflow = '';
+        // FIX #1: Reader uses fixed+overflow-y-auto (CSS handles it), body stays overflow:hidden
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
         document.getElementById('reader-view').classList.remove('hidden');
         document.getElementById('main-header').classList.add('-translate-y-full');
         await renderReader(targetUrl, targetTitle || 'Reading...');
@@ -195,13 +181,12 @@ async function handleLocation() {
         hView.classList.remove('hidden');
         hView.classList.add('animate-fade-in-up');
 
-        // Instant Load from Cache
         if (page === 1) {
             const cachedHome = localStorage.getItem('cache_home_1');
             if (cachedHome) {
                 try {
                     const data = JSON.parse(cachedHome);
-                    displayHome(data, 1, true); // display with 'fromCache' flag
+                    displayHome(data, 1, true);
                 } catch (e) { }
             }
             renderLocalSections();
@@ -283,9 +268,8 @@ async function renderAltPage() {
     }
 }
 
-
 function renderLocalSections() {
-    // This is no longer used for main categories, but kept if user wants home-view sections back.
+    // Reserved for future home-view sections
 }
 
 // ══════════════════════════════════════════════════
@@ -296,7 +280,6 @@ async function renderHome(page) {
     const popSection = document.getElementById('popular-section');
     const upContainer = document.getElementById('updates-container');
 
-    // Only show spinner if we don't have cached data showing
     if (!upContainer.innerHTML || upContainer.innerHTML.includes('skeleton')) {
         upContainer.innerHTML = spinnerHTML(`Synchronizing Page ${page}...`);
     }
@@ -307,7 +290,6 @@ async function renderHome(page) {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
-        // Save to cache for instant load next time (only page 1)
         if (page === 1 && data.updates?.length > 0) {
             localStorage.setItem('cache_home_1', JSON.stringify(data));
         }
@@ -380,7 +362,7 @@ function displayHome(data, page, fromCache = false) {
                         <div class="flex flex-wrap gap-1.5 md:gap-2">
                             ${(m.chapters && m.chapters.length > 0) ? m.chapters.map(ch => {
             const readPath = `/read?url=${encodeURIComponent(ch.url)}&title=${encodeURIComponent(`${clean(m.title)} - ${clean(ch.name)}`)}`;
-            const isRead = READ_CHAPTERS.some(u => norm(u) === norm(ch.url));
+            const isRead = READ_CHAPTERS.includes(ch.url);
             return `
                                 <div onclick="event.stopPropagation(); navigate('${readPath}')"
                                     class="${isRead ? 'bg-primary/20 border-primary/30' : 'bg-primary/10 border-transparent'} border hover:bg-primary/30 px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg transition-all flex items-center gap-1.5 active:scale-95">
@@ -416,15 +398,14 @@ async function renderDetail(url) {
     document.getElementById('d-title').innerText = '';
     document.getElementById('d-synopsis').innerText = '';
     document.getElementById('d-info').innerHTML = '';
-    document.getElementById('detail-bg').style.backgroundImage = 'none'; // Fixed ID
+    document.getElementById('detail-bg').style.backgroundImage = 'none';
     const mainImg = document.getElementById('d-image');
     mainImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
 
-        console.log('[SpeedManga] Initiating fetch for:', url);
         const isAlt = url.includes('1668manga.com');
         const fetchUrl = isAlt
             ? `${API}/alt/manga?url=${encodeURIComponent(url)}`
@@ -433,21 +414,17 @@ async function renderDetail(url) {
         const res = await fetch(fetchUrl, { signal: controller.signal });
         clearTimeout(timeoutId);
 
-        console.log('[SpeedManga] Fetch response status:', res.status);
         if (!res.ok) throw new Error(`HTTP ${res.status} [Link Unstable]`);
         const d = await res.json();
         if (d.error) throw new Error(d.error);
-
-        console.log('[SpeedManga] Data metadata received:', d.title);
 
         document.getElementById('d-title').innerText = d.title || 'Unknown Classified';
         document.getElementById('d-synopsis').innerText = d.synopsis || 'No synopsis data recovered from archives.';
 
         const proxifiedImg = proxify(d.image);
         mainImg.src = proxifiedImg;
-        document.getElementById('detail-bg').style.backgroundImage = `url('${proxifiedImg}')`; // Fixed ID
+        document.getElementById('detail-bg').style.backgroundImage = `url('${proxifiedImg}')`;
 
-        // Render Meta Info
         document.getElementById('d-info').innerHTML = Object.entries(d.info || {}).map(([k, v]) => `
             <div class="glass px-4 py-2 rounded-xl flex items-center gap-3 hover:bg-white/5 transition-colors">
                 <span class="text-primary font-black uppercase tracking-widest text-[9px] opacity-80">${clean(k)}</span>
@@ -463,21 +440,20 @@ async function renderDetail(url) {
                 <span class="text-gray-200 font-medium text-xs">${clean(d.type)}</span>
             </div>` : '');
 
-        // Render Chapters List & Quick Actions
         const qaEl = document.getElementById('d-quick-actions');
         qaEl.innerHTML = '';
 
-        // Global function for bookmark button
         window.currentManga = { title: d.title, url, image: d.image, lastChapter: d.chapters?.[0]?.name || '' };
         window.handleBookmarkToggle = () => toggleBookmark(window.currentManga);
         renderBookmarkBtn(url);
 
         if (d.chapters?.length > 0) {
-            const firstCh = [...d.chapters].sort((a, b) => a.num - b.num)[0];
-            const lastCh = [...d.chapters].sort((a, b) => b.num - a.num)[0];
+            // FIX #4: parseFloat supports decimal chapter numbers like 123.5
+            const firstCh = [...d.chapters].sort((a, b) => parseFloat(a.num) - parseFloat(b.num))[0];
+            const lastCh = [...d.chapters].sort((a, b) => parseFloat(b.num) - parseFloat(a.num))[0];
 
             if (firstCh) {
-                const isFirstRead = READ_CHAPTERS.some(u => norm(u) === norm(firstCh.url));
+                const isFirstRead = READ_CHAPTERS.includes(firstCh.url);
                 qaEl.innerHTML += `
                 <button onclick="navigate('/read?url=${encodeURIComponent(firstCh.url)}&mangaUrl=${encodeURIComponent(url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(firstCh.name)}`)}')"
                     class="${isFirstRead ? 'bg-primary/20 border-primary' : 'bg-white/10 hover:bg-white/20 border-white/10'} border px-6 py-3 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 flex items-center gap-3">
@@ -485,7 +461,7 @@ async function renderDetail(url) {
                 </button>`;
             }
             if (lastCh && lastCh !== firstCh) {
-                const isLastRead = READ_CHAPTERS.some(u => norm(u) === norm(lastCh.url));
+                const isLastRead = READ_CHAPTERS.includes(lastCh.url);
                 qaEl.innerHTML += `
                 <button onclick="navigate('/read?url=${encodeURIComponent(lastCh.url)}&mangaUrl=${encodeURIComponent(url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(lastCh.name)}`)}')"
                     class="bg-gradient-to-r from-primary to-secondary hover:brightness-110 px-8 py-3 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-[0_0_20px_rgba(255,69,0,0.3)] hover:-translate-y-1 flex items-center gap-3">
@@ -493,26 +469,22 @@ async function renderDetail(url) {
                 </button>`;
             }
 
-            if (d.chapters && d.chapters.length > 0) {
-                chaptersEl.innerHTML = d.chapters.map((c, i) => {
-                    const isRead = READ_CHAPTERS.some(u => norm(u) === norm(c.url));
-                    const isAlt = url.includes('1668manga.com');
-                    const readPath = `/read?url=${encodeURIComponent(c.url)}&mangaUrl=${encodeURIComponent(url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(c.name)}`)}${isAlt ? '&alt=1' : ''}`;
-                    return `<button onclick="navigate('${readPath}')"
-                        class="w-full relative overflow-hidden glass hover:bg-white/10 p-4 rounded-2xl text-left transition-all duration-200 flex justify-between items-center group border ${isRead ? 'border-primary/40 bg-primary/5' : 'border-white/5 hover:border-primary/50'}">
-                        <div class="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-primary to-secondary transform ${isRead ? 'scale-x-100' : 'scale-x-0'} origin-left group-hover:scale-x-100 transition-transform duration-200"></div>
-                        <div class="flex items-center gap-3 min-w-0 pr-2">
-                            <div class="w-8 h-8 rounded-full ${isRead ? 'bg-primary border-primary' : 'bg-dark-800 border-white/10'} border flex items-center justify-center flex-shrink-0 group-hover:bg-primary group-hover:border-primary transition-colors">
-                                <i class="fas ${isRead ? 'fa-check text-white' : 'fa-book-open text-gray-400 group-hover:text-white'} text-[10px]"></i>
-                            </div>
-                            <span class="font-bold text-sm ${isRead ? 'text-primary' : 'text-gray-200'} group-hover:text-white truncate">${clean(c.name)}</span>
+            chaptersEl.innerHTML = d.chapters.map((c, i) => {
+                const isRead = READ_CHAPTERS.includes(c.url);
+                const isAlt = url.includes('1668manga.com');
+                const readPath = `/read?url=${encodeURIComponent(c.url)}&mangaUrl=${encodeURIComponent(url)}&title=${encodeURIComponent(`${clean(d.title)} - ${clean(c.name)}`)}${isAlt ? '&alt=1' : ''}`;
+                return `<button onclick="navigate('${readPath}')"
+                    class="w-full relative overflow-hidden glass hover:bg-white/10 p-4 rounded-2xl text-left transition-all duration-200 flex justify-between items-center group border ${isRead ? 'border-primary/40 bg-primary/5' : 'border-white/5 hover:border-primary/50'}">
+                    <div class="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-primary to-secondary transform ${isRead ? 'scale-x-100' : 'scale-x-0'} origin-left group-hover:scale-x-100 transition-transform duration-200"></div>
+                    <div class="flex items-center gap-3 min-w-0 pr-2">
+                        <div class="w-8 h-8 rounded-full ${isRead ? 'bg-primary border-primary' : 'bg-dark-800 border-white/10'} border flex items-center justify-center flex-shrink-0 group-hover:bg-primary group-hover:border-primary transition-colors">
+                            <i class="fas ${isRead ? 'fa-check text-white' : 'fa-book-open text-gray-400 group-hover:text-white'} text-[10px]"></i>
                         </div>
-                        <span class="text-[10px] font-bold tracking-widest uppercase ${isRead ? 'text-primary' : 'opacity-40'} group-hover:opacity-100 group-hover:text-primary transition-colors flex-shrink-0 whitespace-nowrap pl-2">${clean(c.time)}</span>
-                    </button>`;
-                }).join('');
-            } else {
-                chaptersEl.innerHTML = '<div class="col-span-full py-12 text-center text-gray-600 font-bold uppercase tracking-widest text-xs border border-dashed border-gray-800 rounded-2xl">No chapters available</div>';
-            }
+                        <span class="font-bold text-sm ${isRead ? 'text-primary' : 'text-gray-200'} group-hover:text-white truncate">${clean(c.name)}</span>
+                    </div>
+                    <span class="text-[10px] font-bold tracking-widest uppercase ${isRead ? 'text-primary' : 'opacity-40'} group-hover:opacity-100 group-hover:text-primary transition-colors flex-shrink-0 whitespace-nowrap pl-2">${clean(c.time)}</span>
+                </button>`;
+            }).join('');
         } else {
             chaptersEl.innerHTML = '<div class="col-span-full py-12 text-center text-gray-600 font-bold uppercase tracking-widest text-xs border border-dashed border-gray-800 rounded-2xl">No chapters available</div>';
         }
@@ -526,13 +498,7 @@ async function renderDetail(url) {
 // ══════════════════════════════════════════════════
 
 async function renderReader(url, title) {
-    // Smart Title parsing
-    let displayTitle = title;
-    if (title === 'Next' || title === 'Previous' || !title) {
-        const match = url.match(/ch(?:apter)?-?([\d.]+)/i);
-        displayTitle = match ? `Chapter ${match[1]}` : (title || 'Reading...');
-    }
-    document.getElementById('r-title').innerText = displayTitle;
+    document.getElementById('r-title').innerText = title;
 
     const container = document.getElementById('r-images');
     const navBottom = document.getElementById('reader-nav-bottom');
@@ -540,22 +506,6 @@ async function renderReader(url, title) {
 
     navBottom.innerHTML = '';
     if (floatNext) floatNext.classList.add('hidden');
-
-    const rParams = new URLSearchParams(window.location.search);
-    const mangaUrl = rParams.get('mangaUrl');
-
-    // Immediate Read Status Update (Don't wait for fetch)
-    if (url && !READ_CHAPTERS.some(u => norm(u) === norm(url))) {
-        READ_CHAPTERS.unshift(url);
-        saveState();
-    }
-    
-    // Immediate History Sync (if possible)
-    if (mangaUrl) {
-        const mangaTitle = displayTitle.split(' - ')[0] || displayTitle;
-        const chapterName = displayTitle.split(' - ')[1] || 'Chapter';
-        addToHistory({ title: mangaTitle, url: mangaUrl, image: '' }, { name: chapterName, url: url });
-    }
 
     container.innerHTML = `<div class="py-40 flex flex-col items-center gap-6 animate-fade-in-up w-full">
         <div class="w-20 h-20 rounded-3xl glass-card flex items-center justify-center border-primary/30 shadow-[0_0_30px_rgba(255,69,0,0.2)]">
@@ -569,7 +519,7 @@ async function renderReader(url, title) {
 
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 35000); // 35s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 35000);
 
         const cleanUrl = decodeURIComponent(url).split('?')[0];
         const isForce = url.includes('nocache=1') ? '&nocache=1' : '';
@@ -579,26 +529,36 @@ async function renderReader(url, title) {
             ? `${API}/alt/read?url=${encodeURIComponent(cleanUrl)}`
             : `${API}/manga/read?url=${encodeURIComponent(cleanUrl)}${isForce}`;
 
-        console.log('[SpeedManga] Initiating fetch for:', cleanUrl);
         const res = await fetch(fetchUrl, { signal: controller.signal });
         clearTimeout(timeoutId);
 
-        console.log('[SpeedManga] Fetch response status:', res.status);
         if (!res.ok) throw new Error(`HTTP ${res.status} [Link Unstable]`);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
-        // Update History with loaded image
-        if (data.images?.length > 0 && mangaUrl) {
-            const mangaTitle = displayTitle.split(' - ')[0] || displayTitle;
-            addToHistory({
-                title: mangaTitle,
-                url: mangaUrl,
-                image: data.images[0]
-            }, {
-                name: displayTitle.split(' - ')[1] || 'Chapter',
-                url: url
-            });
+        // Update History
+        if (data.images?.length > 0) {
+            // FIX #3: Extract manga title properly from URL param, not from displayed title
+            const params = new URLSearchParams(window.location.search);
+            const mangaUrl = params.get('mangaUrl');
+            const rawTitle = params.get('title') || title;
+
+            // Split on ' - ' to separate manga title from chapter name
+            // e.g. "One Piece - Chapter 123" → mangaTitle="One Piece", chapterName="Chapter 123"
+            const dashIdx = rawTitle.indexOf(' - ');
+            const mangaTitle = dashIdx > -1 ? rawTitle.substring(0, dashIdx) : rawTitle;
+            const chapterName = dashIdx > -1 ? rawTitle.substring(dashIdx + 3) : 'Chapter';
+
+            if (mangaUrl) {
+                addToHistory({
+                    title: mangaTitle,
+                    url: mangaUrl,
+                    image: data.images[0]
+                }, {
+                    name: chapterName,
+                    url: url
+                });
+            }
         }
 
         if (!data.images?.length) {
@@ -616,23 +576,33 @@ async function renderReader(url, title) {
             return;
         }
 
+        // FIX #2: Images render full-width, centered — CSS handles layout
         container.innerHTML = data.images.map((src, i) => `
             <img src="${proxify(src)}"
-                class="reader-img transition-opacity duration-500 opacity-0"
+                class="w-full block transition-opacity duration-500 opacity-0 cursor-pointer"
                 onclick="handleImageClick(event)"
                 onload="this.classList.remove('opacity-0')"
                 loading="${i < 4 ? 'eager' : 'lazy'}"
                 onerror="this.style.display='none'">`
         ).join('');
 
-        // Bottom Navigation UI
+        // FIX #3: Bottom nav — carry original manga title, not "Previous"/"Next" placeholder
+        const params = new URLSearchParams(window.location.search);
+        const mangaUrl = params.get('mangaUrl');
+        const rawTitle = params.get('title') || title;
+        const dashIdx = rawTitle.indexOf(' - ');
+        const mangaTitle = dashIdx > -1 ? rawTitle.substring(0, dashIdx) : rawTitle;
+
         const mangaUrlParam = mangaUrl ? `&mangaUrl=${encodeURIComponent(mangaUrl)}` : '';
 
         if (data.prevUrl) {
             const decodedPrev = decodeURIComponent(data.prevUrl).split('?')[0];
-            const prevMatch = decodedPrev.match(/ch(?:apter)?-?([\d.]+)/i);
-            const prevTitle = prevMatch ? `Chapter ${prevMatch[1]}` : 'Previous';
-            const prevPath = `/read?url=${encodeURIComponent(decodedPrev)}&title=${encodeURIComponent(prevTitle)}${mangaUrlParam}`;
+            // FIX #3: Extract chapter name from prevUrl if possible, else use "Previous Chapter"
+            const prevChapterName = extractChapterNameFromUrl(decodedPrev);
+            const prevTitleParam = mangaTitle && prevChapterName
+                ? `${mangaTitle} - ${prevChapterName}`
+                : (mangaTitle ? `${mangaTitle} - Previous Chapter` : 'Previous Chapter');
+            const prevPath = `/read?url=${encodeURIComponent(decodedPrev)}&title=${encodeURIComponent(prevTitleParam)}${mangaUrlParam}`;
             navBottom.innerHTML += `<button onclick="navigate('${prevPath}')"
                 class="glass hover:bg-white/10 px-6 py-3.5 rounded-2xl text-xs font-bold tracking-widest uppercase transition-all duration-300 hover:-translate-x-1 flex items-center gap-3">
                 <i class="fas fa-arrow-left opacity-70"></i> Prev Chapter
@@ -641,9 +611,12 @@ async function renderReader(url, title) {
 
         if (data.nextUrl) {
             const decodedNext = decodeURIComponent(data.nextUrl).split('?')[0];
-            const nextMatch = decodedNext.match(/ch(?:apter)?-?([\d.]+)/i);
-            const nextTitle = nextMatch ? `Chapter ${nextMatch[1]}` : 'Next';
-            const nextPath = `/read?url=${encodeURIComponent(decodedNext)}&title=${encodeURIComponent(nextTitle)}${mangaUrlParam}`;
+            // FIX #3: Extract chapter name from nextUrl if possible, else use "Next Chapter"
+            const nextChapterName = extractChapterNameFromUrl(decodedNext);
+            const nextTitleParam = mangaTitle && nextChapterName
+                ? `${mangaTitle} - ${nextChapterName}`
+                : (mangaTitle ? `${mangaTitle} - Next Chapter` : 'Next Chapter');
+            const nextPath = `/read?url=${encodeURIComponent(decodedNext)}&title=${encodeURIComponent(nextTitleParam)}${mangaUrlParam}`;
             navBottom.innerHTML += `<button onclick="navigate('${nextPath}')"
                 class="bg-gradient-to-r from-primary to-secondary hover:brightness-110 px-8 py-3.5 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-[0_0_20px_rgba(255,69,0,0.3)] hover:-translate-y-1 flex items-center gap-3">
                 Next Chapter <i class="fas fa-arrow-right"></i>
@@ -673,11 +646,35 @@ async function renderReader(url, title) {
     }
 }
 
+/**
+ * FIX #3 + #4: Attempt to extract a readable chapter name from a URL.
+ * Supports decimal chapter numbers like /chapter-123.5/
+ * e.g. "https://example.com/manga/one-piece/chapter-123.5/" → "Chapter 123.5"
+ */
+function extractChapterNameFromUrl(url) {
+    if (!url) return '';
+    // Match patterns like: chapter-123, chapter-123.5, chap-12, ep-5, etc.
+    const match = url.match(/(?:chapter|chap|ch|ep|episode)[_\-](\d+(?:\.\d+)?)/i);
+    if (match) {
+        return `Chapter ${match[1]}`;
+    }
+    // Fallback: last meaningful path segment
+    const segments = url.replace(/\/$/, '').split('/').filter(Boolean);
+    const last = segments[segments.length - 1];
+    if (last && last.length < 60) {
+        // Convert slug to title-case readable string
+        return last.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+    return '';
+}
+
 // ══════════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════════
 
+// FIX: Updated handleImageClick to use querySelectorAll (more robust)
+function handleImageClick(e) {
+    document.querySelectorAll('#reader-topbar, #reader-floats, #reader-footer').forEach(el => el.classList.toggle('ui-hidden'));
+}
 
-// INITIALIZATION
-function handleImageClick(e) { ['reader-topbar', 'reader-floats', 'reader-footer'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('ui-hidden'); }); }
 window.onload = handleLocation;

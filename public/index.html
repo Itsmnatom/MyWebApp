@@ -31,7 +31,7 @@
                         display: ['Outfit', 'sans-serif'],
                     },
                     colors: {
-                        primary: '#FF4500', // Vibrant Orange/Red
+                        primary: '#FF4500',
                         secondary: '#FF8C00',
                         dark: {
                             900: '#050505',
@@ -75,7 +75,6 @@
             -webkit-backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.05);
             transform: translateZ(0);
-            /* Hardware Acceleration */
             will-change: transform;
         }
 
@@ -159,78 +158,58 @@
             overflow: hidden;
         }
 
-        /* Reader Scaling & Constraints — Absolute Force */
+        /* =============================================
+           FIX #1 + #2: Reader — fixed scroll container
+           + image centering
+           ============================================= */
         #reader-view {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            min-height: 100vh !important;
-            background: #000 !important;
-            z-index: 1000 !important;
-            display: none; /* hidden by default */
-        }
-        #reader-view:not(.hidden) {
-            display: block !important;
+            position: fixed !important;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            /* smooth momentum scroll on iOS */
+            scroll-behavior: smooth;
         }
 
+        /* FIX #2: Images always centered, full-width on mobile */
         .reader-image-container {
-            width: 100% !important;
-            min-width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            display: block !important;
-            background: #000;
+            width: 100%;
+            display: block;
         }
 
-        .reader-img {
-            width: 100% !important;
-            min-width: 100% !important;
-            max-width: 100% !important;
-            height: auto !important;
-            display: block !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: #000;
+        .reader-image-container img {
+            display: block;
+            margin: 0 auto;
+            background-color: #000000;
             cursor: zoom-in;
-            border: none !important;
+            /* Mobile default: full width */
+            width: 100%;
+            max-width: 100%;
+            height: auto;
         }
 
+        /* Desktop: constrain to readable width, keep centered */
         @media (min-width: 1025px) {
-            .reader-img {
-                width: 70% !important;
+            .reader-image-container img {
+                width: 70vw !important;
                 max-width: 900px !important;
                 margin: 0 auto !important;
-                box-shadow: 0 0 100px rgba(0,0,0,0.9);
+                box-shadow: 0 0 100px rgba(0, 0, 0, 0.9);
             }
         }
 
+        /* Mobile: ensure no side gaps, no extra padding */
         @media (max-width: 1024px) {
-            #reader-view {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                width: 100% !important;
-                height: 100% !important;
-                overflow-y: auto !important;
-                overflow-x: hidden !important;
-                z-index: 1000 !important;
-            }
-
-            .reader-image-container {
-                width: 100% !important;
-                display: block !important;
-                padding: 0 !important;
-                margin: 0 !important;
-            }
-
             .reader-image-container img {
                 width: 100% !important;
                 max-width: 100% !important;
                 min-width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                height: auto !important;
             }
         }
 
@@ -259,7 +238,6 @@
                 SPEED<span class="text-gradient">MANGA</span>
             </a>
             <div class="flex items-center gap-4 md:gap-6">
-                <!-- Navigation Links -->
                 <div class="flex items-center gap-4 md:gap-6 mr-2 md:mr-6 border-r border-white/10 pr-4 md:pr-6">
                     <a href="javascript:navigate('/history')"
                         class="text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-primary transition-colors">History</a>
@@ -299,11 +277,9 @@
                     </h2>
                 </div>
 
-                <!-- Horizontal Scroll for Popular -->
                 <div class="relative group">
                     <div id="popular-container"
                         class="flex gap-4 md:gap-6 overflow-x-auto hide-scrollbar pb-8 snap-x snap-mandatory px-2">
-                        <!-- Skeletons -->
                         <div class="skeleton w-40 md:w-56 h-60 md:h-80 flex-none rounded-2xl"></div>
                         <div class="skeleton w-40 md:w-56 h-60 md:h-80 flex-none rounded-2xl"></div>
                         <div class="skeleton w-40 md:w-56 h-60 md:h-80 flex-none rounded-2xl"></div>
@@ -326,7 +302,6 @@
             </div>
 
             <div id="updates-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
-                <!-- Updates injected here -->
             </div>
 
             <!-- Pagination -->
@@ -359,7 +334,6 @@
             </h2>
         </div>
         <div id="history-page-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-            <!-- History cards injected here -->
         </div>
     </div>
 
@@ -375,7 +349,6 @@
         </div>
         <div id="bookmarks-page-container"
             class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-            <!-- Bookmark cards injected here -->
         </div>
     </div>
 
@@ -391,7 +364,6 @@
         </div>
         <div id="alt-page-container"
             class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-            <!-- Alt cards injected here -->
         </div>
     </div>
 
@@ -399,7 +371,6 @@
          DETAIL VIEW
     ============================================ -->
     <div id="detail-view" class="hidden min-h-screen relative pb-20">
-        <!-- Dynamic Background (Lower Blur for FPS) -->
         <div id="detail-bg"
             class="absolute inset-0 h-[50vh] bg-cover bg-center opacity-15 blur-xl z-0 transition-opacity duration-700">
         </div>
@@ -415,9 +386,7 @@
                 <span class="font-bold tracking-wider text-sm">BACK</span>
             </button>
 
-            <!-- Main Info Card -->
             <div class="flex flex-col md:flex-row gap-8 lg:gap-12 animate-fade-in-up">
-                <!-- Cover Image -->
                 <div class="flex-shrink-0 w-48 md:w-72 mx-auto md:mx-0 relative group">
                     <div
                         class="absolute inset-0 bg-primary/20 blur-xl rounded-2xl group-hover:bg-primary/30 transition-colors duration-500">
@@ -427,7 +396,6 @@
                         src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
                 </div>
 
-                <!-- Details -->
                 <div class="flex-1 flex flex-col justify-center">
                     <h1 id="d-title"
                         class="text-3xl md:text-5xl font-black mb-4 leading-tight font-display tracking-tight text-white drop-shadow-md">
@@ -444,13 +412,10 @@
                     </div>
 
                     <div id="d-info" class="flex flex-wrap gap-3 text-xs mb-8"></div>
-
-                    <!-- Quick Actions -->
                     <div id="d-quick-actions" class="flex flex-wrap gap-4"></div>
                 </div>
             </div>
 
-            <!-- Chapters Section -->
             <div class="mt-16 animate-fade-in-up" style="animation-delay: 0.1s;">
                 <div class="flex items-center gap-4 mb-8">
                     <h3 class="text-2xl font-bold font-display uppercase tracking-tight">Chapters</h3>
@@ -460,7 +425,6 @@
                 <div class="glass-card rounded-3xl p-2 md:p-6 border-white/5">
                     <div id="d-chapters"
                         class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3 max-h-[600px] overflow-y-auto pr-2 custom-scroll">
-                        <!-- Chapters inserted here -->
                     </div>
                 </div>
             </div>
@@ -469,13 +433,14 @@
 
     <!-- ============================================
          READER VIEW
+         FIX #1: fixed+overflow-y-auto handled via CSS above
     ============================================ -->
-    <div id="reader-view" class="hidden scroll-smooth">
+    <div id="reader-view" class="hidden bg-black z-[100]">
 
-        <!-- Interactive Float Controls -->
+        <!-- Float Controls -->
         <div class="fixed bottom-6 right-6 flex flex-col gap-4 z-[110] transition-opacity duration-300"
             id="reader-floats">
-            <button onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+            <button id="reader-scroll-top-btn"
                 class="w-12 h-12 rounded-full glass hover:bg-primary/20 hover:border-primary/50 text-white flex items-center justify-center shadow-2xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1">
                 <i class="fas fa-arrow-up"></i>
             </button>
@@ -485,7 +450,7 @@
             </button>
         </div>
 
-        <!-- Minimalist Top Bar -->
+        <!-- Top Bar -->
         <div class="fixed top-0 inset-x-0 bg-gradient-to-b from-black/90 to-transparent pt-4 pb-12 px-4 flex justify-between items-start z-50 pointer-events-none transition-transform duration-300"
             id="reader-topbar">
             <button onclick="window.history.back()"
@@ -499,11 +464,11 @@
                 <span id="r-title" class="text-xs font-bold text-gray-200 truncate block"></span>
             </div>
 
-            <div class="w-24"></div> <!-- Spacer -->
+            <div class="w-24"></div>
         </div>
 
         <!-- Images Container -->
-        <div id="r-images" class="w-full min-h-screen reader-image-container pt-0 pb-4"></div>
+        <div id="r-images" class="block w-full min-h-screen reader-image-container pt-0 pb-4"></div>
 
         <!-- Next/Prev Footer -->
         <div id="reader-footer"
@@ -524,19 +489,27 @@
     ============================================ -->
     <script src="/app.js"></script>
     <script>
-        // Reader scroll hide/show UI logic
-        const readerTopbar = document.getElementById('reader-topbar');
+        // =============================================
+        // FIX #1: Reader scroll — listen on the reader
+        // element itself, NOT window (since it's fixed+
+        // overflow-y-auto, scroll events fire on it)
+        // =============================================
         const readerView = document.getElementById('reader-view');
+        const readerTopbar = document.getElementById('reader-topbar');
+        const readerScrollTopBtn = document.getElementById('reader-scroll-top-btn');
+
+        // Scroll-to-top button scrolls the reader container
+        readerScrollTopBtn.addEventListener('click', () => {
+            readerView.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
         let lastScrollY = 0;
 
-        window.addEventListener('scroll', () => {
-            if (readerView.classList.contains('hidden')) return;
-            
-            const currentScrollY = window.scrollY;
+        readerView.addEventListener('scroll', () => {
+            const currentScrollY = readerView.scrollTop;
             const readerFloats = document.getElementById('reader-floats');
             const readerFooter = document.getElementById('reader-footer');
 
-            // Hide UI elements on scroll down, show on scroll up
             if (currentScrollY > 100 && currentScrollY > lastScrollY) {
                 readerTopbar.classList.add('ui-hidden');
                 readerFloats.classList.add('ui-hidden');
