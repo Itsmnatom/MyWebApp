@@ -257,6 +257,8 @@
 
             <div class="flex items-center gap-3 md:gap-5 flex-shrink-0">
                 <div class="hidden md:flex items-center gap-4 border-r border-white/10 pr-4">
+                    <a href="javascript:navigate('/')"
+                        class="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-white transition-colors">Home</a>
                     <a href="javascript:navigate('/history')"
                         class="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-primary transition-colors">History</a>
                     <a href="javascript:navigate('/bookmarks')"
@@ -264,13 +266,11 @@
                     <a href="javascript:navigate('/alt')"
                         class="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-amber-400 transition-colors">Alt</a>
                 </div>
-                <div class="flex md:hidden items-center gap-3">
-                    <a href="javascript:navigate('/history')"
-                        class="text-gray-400 hover:text-primary transition-colors"><i
-                            class="fas fa-clock-rotate-left text-sm"></i></a>
-                    <a href="javascript:navigate('/bookmarks')"
-                        class="text-gray-400 hover:text-blue-400 transition-colors"><i
-                            class="fas fa-bookmark text-sm"></i></a>
+                <div class="flex md:hidden items-center">
+                    <button onclick="toggleMobileMenu()"
+                        class="text-gray-400 hover:text-white transition-colors p-2 active:scale-95 transition-transform">
+                        <i class="fas fa-bars-staggered text-xl"></i>
+                    </button>
                 </div>
                 <div class="flex items-center gap-2 bg-dark-800/80 border border-white/5 px-3 py-1.5 rounded-full">
                     <div class="relative flex h-2 w-2">
@@ -283,6 +283,34 @@
             </div>
         </div>
     </nav>
+    
+    <!-- ============================================
+         MOBILE MENU OVERLAY
+    ============================================ -->
+    <div id="mobile-menu-overlay" 
+         class="fixed inset-0 z-[60] glass hidden flex-col items-center justify-center gap-8 animate-fade-in-up duration-300">
+        <button onclick="toggleMobileMenu()" 
+                class="absolute top-6 right-6 text-gray-400 hover:text-white text-3xl transition-colors">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <a href="javascript:navigate('/'); toggleMobileMenu();" 
+           class="text-2xl font-black uppercase tracking-[0.2em] font-display hover:text-primary transition-colors">Home</a>
+        <a href="javascript:navigate('/history'); toggleMobileMenu();" 
+           class="text-2xl font-black uppercase tracking-[0.2em] font-display hover:text-primary transition-colors">History</a>
+        <a href="javascript:navigate('/bookmarks'); toggleMobileMenu();" 
+           class="text-2xl font-black uppercase tracking-[0.2em] font-display hover:text-blue-400 transition-colors">Bookmarks</a>
+        <a href="javascript:navigate('/alt'); toggleMobileMenu();" 
+           class="text-2xl font-black uppercase tracking-[0.2em] font-display hover:text-amber-400 transition-colors">Alternative</a>
+           
+        <div class="mt-12 flex items-center gap-2 bg-dark-800/80 border border-white/5 px-6 py-3 rounded-full">
+            <div class="relative flex h-3 w-3">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+            </div>
+            <span class="text-xs font-bold tracking-widest text-gray-300 uppercase">Engine v4 Active</span>
+        </div>
+    </div>
 
     <!-- ============================================
          SEARCH VIEW

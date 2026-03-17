@@ -847,6 +847,20 @@ function exitToDetail() {
     }
 }
 
+function toggleMobileMenu() {
+    const overlay = document.getElementById('mobile-menu-overlay');
+    if (!overlay) return;
+    if (overlay.classList.contains('hidden')) {
+        overlay.classList.remove('hidden');
+        overlay.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    } else {
+        overlay.classList.add('hidden');
+        overlay.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+}
+
 function exitDetail() {
     // If we have a saved browse path, go there. 
     // This prevents going back into the Reader from Detail view.
