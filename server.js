@@ -40,7 +40,7 @@ app.use(cors());
 app.use(express.json());
 
 // SPA Routes — must be before express.static so refreshing these paths returns index.html
-const SPA_ROUTES = ['/', '/history', '/bookmarks', '/manga', '/read', '/alt'];
+const SPA_ROUTES = ['/', '/history', '/bookmarks', '/manga', '/read', '/alt', '/search'];
 SPA_ROUTES.forEach(r => {
     app.get(r, (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 });
@@ -262,6 +262,34 @@ async function scrapeHome(page) {
         updates: filterAndSort(updates).slice(0, 32)
     };
 }
+
+// ══════════════════════════════════════════════════
+//  API: SEARCH
+// ══════════════════════════════════════════════════
+app.get('/api/manga/search', async (req, res) => {
+    const q = (req.query.q || '').trim();
+    if (!q) return res.status(400).json({ error: 'Missing query' });
+    try {
+        const fetchUrl = `${TARGET_SITE}/?s=${encodeURIComponent(q)}&post_type=wp-manga`;
+        const html = await fetchHtml(fetchUrl);
+        const $ = cheerio.load(html);
+        const results = [], seen = new Set();
+        $('.listupd .bs, .row-search-chapter, .manga-item').each((_, el) => {
+            const a = $(el).find('a').first();
+            const url = a.attr('href') || '';
+            if (!url || seen.has(url)) return;
+            seen.add(url);
+            const title = a.attr('title') || $(el).find('.tt, .post-title, h3, h4').first().text().trim() || '';
+            if (!title) return;
+            const imgEl = $(el).find('img').first();
+            const image = imgEl.attr('data-src') || imgEl.attr('data-lazy-src') || imgEl.attr('src') || '';
+            const lastChapter = $(el).find('.epxs, .tab-chapter a').first().text().trim() || '';
+            const badge = $(el).find('.colored, .type').first().text().trim() || '';
+            results.push({ title, image, url, lastChapter, badge });
+        });
+        res.json({ results: results.slice(0, 30), query: q });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 
 // ══════════════════════════════════════════════════
