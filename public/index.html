@@ -229,37 +229,74 @@
 <body class="antialiased selection:bg-primary selection:text-white">
 
     <!-- ============================================
-         NAVIGATION (Glassmorphism)
+         NAVIGATION (Glassmorphism) + SEARCH BAR
     ============================================ -->
     <nav id="main-header" class="glass sticky top-0 z-50 transition-all duration-300">
-        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+        <div class="container mx-auto px-4 md:px-6 py-3 flex items-center gap-3 md:gap-4">
             <a href="javascript:navigate('/')"
-                class="font-display text-2xl md:text-3xl font-black tracking-tighter hover:scale-105 transition-transform duration-300">
+                class="font-display text-xl md:text-2xl font-black tracking-tighter hover:scale-105 transition-transform duration-300 flex-shrink-0">
                 SPEED<span class="text-gradient">MANGA</span>
             </a>
-            <div class="flex items-center gap-4 md:gap-6">
-                <div class="flex items-center gap-4 md:gap-6 mr-2 md:mr-6 border-r border-white/10 pr-4 md:pr-6">
-                    <a href="javascript:navigate('/history')"
-                        class="text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-primary transition-colors">History</a>
-                    <a href="javascript:navigate('/bookmarks')"
-                        class="text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-blue-400 transition-colors">Bookmarks</a>
-                    <a href="javascript:navigate('/alt')"
-                        class="text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-amber-400 transition-colors">Alternative</a>
-                </div>
 
+            <!-- FEATURE A: Search bar -->
+            <div class="flex-1 relative max-w-md mx-auto">
                 <div
-                    class="flex items-center gap-3 bg-dark-800/80 border border-white/5 px-4 py-1.5 rounded-full shadow-inner">
-                    <div class="relative flex h-2.5 w-2.5">
+                    class="flex items-center bg-dark-700/80 border border-white/10 rounded-2xl px-4 py-2 gap-3 focus-within:border-primary/50 transition-colors">
+                    <i class="fas fa-search text-gray-500 text-xs flex-shrink-0"></i>
+                    <input id="search-input" type="text" placeholder="Search manga..."
+                        class="bg-transparent text-sm text-white placeholder-gray-500 font-medium outline-none w-full min-w-0">
+                    <button id="search-clear"
+                        class="hidden text-gray-500 hover:text-white transition-colors flex-shrink-0">
+                        <i class="fas fa-xmark text-xs"></i>
+                    </button>
+                </div>
+                <div id="search-dropdown"
+                    class="hidden absolute top-full left-0 right-0 mt-2 glass rounded-2xl border border-white/10 shadow-2xl overflow-hidden z-50 max-h-96 overflow-y-auto">
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 md:gap-5 flex-shrink-0">
+                <div class="hidden md:flex items-center gap-4 border-r border-white/10 pr-4">
+                    <a href="javascript:navigate('/history')"
+                        class="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-primary transition-colors">History</a>
+                    <a href="javascript:navigate('/bookmarks')"
+                        class="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-blue-400 transition-colors">Bookmarks</a>
+                    <a href="javascript:navigate('/alt')"
+                        class="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-amber-400 transition-colors">Alt</a>
+                </div>
+                <div class="flex md:hidden items-center gap-3">
+                    <a href="javascript:navigate('/history')"
+                        class="text-gray-400 hover:text-primary transition-colors"><i
+                            class="fas fa-clock-rotate-left text-sm"></i></a>
+                    <a href="javascript:navigate('/bookmarks')"
+                        class="text-gray-400 hover:text-blue-400 transition-colors"><i
+                            class="fas fa-bookmark text-sm"></i></a>
+                </div>
+                <div class="flex items-center gap-2 bg-dark-800/80 border border-white/5 px-3 py-1.5 rounded-full">
+                    <div class="relative flex h-2 w-2">
                         <span
                             class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                     </div>
-                    <span class="text-[10px] md:text-xs font-bold tracking-wider text-gray-300 uppercase mt-0.5">Engine
-                        v4</span>
+                    <span class="text-[9px] font-bold tracking-wider text-gray-300 uppercase hidden sm:block">v4</span>
                 </div>
             </div>
         </div>
     </nav>
+
+    <!-- ============================================
+         SEARCH VIEW
+    ============================================ -->
+    <div id="search-view" class="hidden min-h-screen pb-20 pt-10 px-4 md:px-8 max-w-7xl mx-auto">
+        <div class="flex items-center gap-3 mb-10">
+            <div class="w-2 h-8 bg-primary rounded-full shadow-[0_0_15px_rgba(255,69,0,0.5)]"></div>
+            <h2 id="search-page-title" class="text-2xl md:text-4xl font-black tracking-tight uppercase font-display">
+                Search</h2>
+        </div>
+        <div id="search-page-container"
+            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+        </div>
+    </div>
 
     <!-- ============================================
          HOME VIEW
@@ -433,19 +470,32 @@
 
     <!-- ============================================
          READER VIEW
-         FIX #1: fixed+overflow-y-auto handled via CSS above
     ============================================ -->
     <div id="reader-view" class="hidden bg-black z-[100]">
 
-        <!-- Float Controls -->
-        <div class="fixed bottom-6 right-6 flex flex-col gap-4 z-[110] transition-opacity duration-300"
+        <!-- FEATURE C: Page Counter (bottom left) -->
+        <div id="page-counter"
+            class="hidden fixed bottom-6 left-6 z-[110] glass px-4 py-2 rounded-2xl text-xs font-black text-white tracking-widest pointer-events-none tabular-nums">
+            1 / ?
+        </div>
+
+        <!-- Float Controls (bottom right) -->
+        <div class="fixed bottom-6 right-6 flex flex-col gap-3 z-[110] transition-opacity duration-300"
             id="reader-floats">
+            <!-- FEATURE E: Fullscreen button -->
+            <button id="reader-fs-btn" onclick="toggleFullscreen()"
+                class="w-10 h-10 rounded-full glass hover:bg-white/10 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:-translate-y-0.5"
+                title="Fullscreen (F)">
+                <i class="fas fa-expand text-xs"></i>
+            </button>
             <button id="reader-scroll-top-btn"
-                class="w-12 h-12 rounded-full glass hover:bg-primary/20 hover:border-primary/50 text-white flex items-center justify-center shadow-2xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1">
-                <i class="fas fa-arrow-up"></i>
+                class="w-10 h-10 rounded-full glass hover:bg-primary/20 hover:border-primary/50 text-white flex items-center justify-center shadow-xl transition-all duration-300 hover:-translate-y-1"
+                title="Back to top">
+                <i class="fas fa-arrow-up text-xs"></i>
             </button>
             <button id="float-next-btn"
-                class="hidden w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center shadow-[0_0_30px_rgba(255,69,0,0.5)] transition-all duration-300 hover:scale-110">
+                class="hidden w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center shadow-[0_0_30px_rgba(255,69,0,0.5)] transition-all duration-300 hover:scale-110"
+                title="Next chapter (→)">
                 <i class="fas fa-forward-step text-xl"></i>
             </button>
         </div>
@@ -464,7 +514,17 @@
                 <span id="r-title" class="text-xs font-bold text-gray-200 truncate block"></span>
             </div>
 
-            <div class="w-24"></div>
+            <!-- FEATURE E: Keyboard hint (desktop only) -->
+            <div class="hidden md:flex items-center gap-2 pointer-events-none">
+                <div class="glass px-3 py-1.5 rounded-xl flex items-center gap-2 text-[10px] text-gray-500 font-bold">
+                    <kbd class="bg-white/10 px-1.5 py-0.5 rounded text-[9px]">←</kbd>
+                    <kbd class="bg-white/10 px-1.5 py-0.5 rounded text-[9px]">→</kbd>
+                    <span>chapters</span>
+                    <span class="opacity-40">·</span>
+                    <kbd class="bg-white/10 px-1.5 py-0.5 rounded text-[9px]">F</kbd>
+                    <span>fullscreen</span>
+                </div>
+            </div>
         </div>
 
         <!-- Images Container -->
