@@ -12,6 +12,7 @@
 'use strict';
 
 const API = '/api';
+let lastMainPath = '/';
 
 // ══════════════════════════════════════════════════
 //  HELPERS
@@ -341,8 +342,12 @@ async function handleLocation() {
     document.body.style.overflow = 'auto';
     document.documentElement.style.overflow = 'auto';
     window.scrollTo({ top: 0, behavior: 'instant' });
-    readerState.nextPath = null;
     readerState.prevPath = null;
+
+    // Track main browsing paths to avoid backing into Reader from Detail
+    if (['/', '/search', '/history', '/bookmarks', '/alt'].includes(path)) {
+        lastMainPath = window.location.pathname + window.location.search;
+    }
 
     if (path === '/read' && targetUrl) {
         document.body.style.overflow = 'hidden';
@@ -839,6 +844,16 @@ function exitToDetail() {
         navigate(`/manga?url=${encodeURIComponent(mangaUrl)}`);
     } else {
         window.history.back();
+    }
+}
+
+function exitDetail() {
+    // If we have a saved browse path, go there. 
+    // This prevents going back into the Reader from Detail view.
+    if (lastMainPath) {
+        navigate(lastMainPath);
+    } else {
+        navigate('/');
     }
 }
 
