@@ -141,9 +141,12 @@ async function handleLocation() {
     
     document.getElementById('main-header').classList.remove('-translate-y-full');
     document.body.style.overflow = 'auto';
-    window.scrollTo({ top: 0, behavior: 'instant' }); // Reset scroll to top
+    document.documentElement.style.overflow = 'auto';
+    window.scrollTo({ top: 0, behavior: 'instant' }); 
 
     if (path === '/read' && targetUrl) {
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
         document.getElementById('reader-view').classList.remove('hidden');
         document.getElementById('main-header').classList.add('-translate-y-full'); 
         await renderReader(targetUrl, targetTitle || 'Reading...');
@@ -580,7 +583,7 @@ async function renderReader(url, title) {
 
         container.innerHTML = data.images.map((src, i) => `
             <img src="${proxify(src)}"
-                class="w-full relative z-10 transition-opacity duration-500 opacity-0 cursor-pointer"
+                class="w-full block transition-opacity duration-500 opacity-0 cursor-pointer"
                 onclick="handleImageClick(event)"
                 onload="this.classList.remove('opacity-0')"
                 loading="${i < 4 ? 'eager' : 'lazy'}"
