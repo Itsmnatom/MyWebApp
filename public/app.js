@@ -92,9 +92,8 @@ function addToHistory(manga, chapter) {
     // Also track as read chapter
     if (chapter.url && !READ_CHAPTERS.includes(chapter.url)) {
         READ_CHAPTERS.unshift(chapter.url);
+        saveState();
     }
-
-    saveState();
 }
 
 function renderBookmarkBtn(mangaUrl) {
@@ -532,6 +531,22 @@ async function renderReader(url, title) {
     navBottom.innerHTML = '';
     if (floatNext) floatNext.classList.add('hidden');
 
+    const rParams = new URLSearchParams(window.location.search);
+    const mangaUrl = rParams.get('mangaUrl');
+
+    // Immediate Read Status Update (Don't wait for fetch)
+    if (url && !READ_CHAPTERS.includes(url)) {
+        READ_CHAPTERS.unshift(url);
+        saveState();
+    }
+    
+    // Immediate History Sync (if possible)
+    if (mangaUrl) {
+        const mangaTitle = displayTitle.split(' - ')[0] || displayTitle;
+        const chapterName = displayTitle.split(' - ')[1] || 'Chapter';
+        addToHistory({ title: mangaTitle, url: mangaUrl, image: '' }, { name: chapterName, url: url });
+    }
+
     container.innerHTML = `<div class="py-40 flex flex-col items-center gap-6 animate-fade-in-up w-full">
         <div class="w-20 h-20 rounded-3xl glass-card flex items-center justify-center border-primary/30 shadow-[0_0_30px_rgba(255,69,0,0.2)]">
             <i class="fas fa-layer-group fa-spin text-primary text-3xl"></i>
@@ -563,22 +578,17 @@ async function renderReader(url, title) {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
-        // Update History
-        if (data.images?.length > 0) {
-            const mangaTitle = title.split(' - ')[0] || title;
-            const rParams = new URLSearchParams(window.location.search);
-            const mangaUrl = rParams.get('mangaUrl');
-
-            if (mangaUrl) {
-                addToHistory({
-                    title: mangaTitle,
-                    url: mangaUrl,
-                    image: data.images[0]
-                }, {
-                    name: title.split(' - ')[1] || 'Chapter',
-                    url: url
-                });
-            }
+        // Update History with loaded image
+        if (data.images?.length > 0 && mangaUrl) {
+            const mangaTitle = displayTitle.split(' - ')[0] || displayTitle;
+            addToHistory({
+                title: mangaTitle,
+                url: mangaUrl,
+                image: data.images[0]
+            }, {
+                name: displayTitle.split(' - ')[1] || 'Chapter',
+                url: url
+            });
         }
 
         if (!data.images?.length) {
