@@ -583,7 +583,7 @@ async function renderReader(url, title) {
 
         container.innerHTML = data.images.map((src, i) => `
             <img src="${proxify(src)}"
-                class="w-full block transition-opacity duration-500 opacity-0 cursor-pointer"
+                class="reader-img transition-opacity duration-500 opacity-0"
                 onclick="handleImageClick(event)"
                 onload="this.classList.remove('opacity-0')"
                 loading="${i < 4 ? 'eager' : 'lazy'}"
@@ -639,5 +639,8 @@ async function renderReader(url, title) {
 // ══════════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════════
+
+
+// INITIALIZATION
 function handleImageClick(e) { ['reader-topbar', 'reader-floats', 'reader-footer'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('ui-hidden'); }); }
 window.onload = handleLocation;

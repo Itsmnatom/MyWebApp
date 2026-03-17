@@ -208,42 +208,7 @@ body {
     animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Reader Specific */
-.reader-image-container img {
-    max-width: 100%;
-    height: auto;
-    display: block;
-    box-shadow: 0 0 50px rgba(0,0,0,0.5);
-    margin: 0 auto;
-}
-
-/* UI Toggle State */
-.ui-hidden {
-    transform: translateY(-100%) !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-#reader-floats.ui-hidden {
-    transform: translateY(40px) scale(0.8) !important;
-}
-
-#reader-footer.ui-hidden {
-    transform: translateY(100%) !important;
-}
-
-@media (max-width: 768px) {
-    .reader-image-container {
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-    }
-    .reader-image-container img {
-        width: 100% !important;
-        box-shadow: none !important;
-    }
-}
+/* Reader Utilities moved to index.html for better specificity */
 
 /* Utilities */
 .hide-scrollbar::-webkit-scrollbar { display: none; }
