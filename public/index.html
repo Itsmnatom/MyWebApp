@@ -67,8 +67,8 @@
 
         .glass {
             background: rgba(18, 18, 18, 0.75);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
@@ -86,6 +86,7 @@
             background-clip: text;
         }
 
+        /* Skeleton Loader */
         .skeleton {
             background: linear-gradient(90deg, #1A1A1A 25%, #2A2A2A 50%, #1A1A1A 75%);
             background-size: 200% 100%;
@@ -103,18 +104,18 @@
             }
         }
 
+        /* Custom Scrollbar */
         ::-webkit-scrollbar {
-            width: 8px;
+            width: 6px;
         }
 
         ::-webkit-scrollbar-track {
-            background: #050505;
+            background: #000;
         }
 
         ::-webkit-scrollbar-thumb {
             background: #FF4500;
             border-radius: 10px;
-            border: 2px solid #050505;
         }
 
         .hide-scrollbar::-webkit-scrollbar {
@@ -126,37 +127,48 @@
             scrollbar-width: none;
         }
 
-        .line-clamp-2 {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+        /* Reader Optimization - ปรับปรุงการจัดวางภาพและเลื่อนหน้า */
+        #reader-view {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #000;
+            z-index: 100;
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
-        /* Reader Optimization - ป้องกันภาพเบี้ยวและจัดกึ่งกลาง */
         .reader-image-container {
+            width: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
-            width: 100%;
+            background-color: #000;
         }
 
         .reader-image-container img {
-            width: 100%;
-            height: auto;
+            width: 100% !important;
+            height: auto !important;
             display: block;
             margin: 0 auto;
             background-color: #000;
+            border: none;
+            outline: none;
         }
 
         @media (min-width: 1025px) {
             .reader-image-container img {
-                width: 70vw;
-                max-width: 900px;
-                box-shadow: 0 0 100px rgba(0, 0, 0, 0.9);
+                width: 70vw !important;
+                max-width: 900px !important;
+                box-shadow: 0 0 80px rgba(0, 0, 0, 0.8);
             }
         }
 
+        /* UI Animations */
         .ui-hidden {
             opacity: 0 !important;
             pointer-events: none !important;
@@ -166,175 +178,129 @@
         #reader-floats.ui-hidden {
             transform: translateY(20px);
         }
+
+        .transition-ui {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
     </style>
 </head>
 
 <body class="antialiased selection:bg-primary selection:text-white">
 
+    <!-- NAVIGATION -->
     <nav id="main-header" class="glass sticky top-0 z-50 transition-all duration-300">
         <div class="container mx-auto px-6 py-4 flex justify-between items-center">
             <a href="javascript:navigate('/')"
                 class="font-display text-2xl md:text-3xl font-black tracking-tighter hover:scale-105 transition-transform duration-300">
                 SPEED<span class="text-gradient">MANGA</span>
             </a>
-            <div class="flex items-center gap-4 md:gap-6">
-                <div class="flex items-center gap-4 md:gap-6 mr-2 md:mr-6 border-r border-white/10 pr-4 md:pr-6">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-4 border-r border-white/10 pr-4">
                     <a href="javascript:navigate('/history')"
                         class="text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-primary transition-colors">History</a>
                     <a href="javascript:navigate('/bookmarks')"
                         class="text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-blue-400 transition-colors">Bookmarks</a>
-                    <a href="javascript:navigate('/alt')"
-                        class="text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-amber-400 transition-colors">Alternative</a>
                 </div>
-
-                <div
-                    class="flex items-center gap-3 bg-dark-800/80 border border-white/5 px-4 py-1.5 rounded-full shadow-inner">
-                    <div class="relative flex h-2.5 w-2.5">
-                        <span
-                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
-                    </div>
-                    <span class="text-[10px] md:text-xs font-bold tracking-wider text-gray-300 uppercase mt-0.5">Engine
-                        v4</span>
+                <div class="bg-dark-800/80 border border-white/5 px-4 py-1.5 rounded-full flex items-center gap-2">
+                    <div class="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <span class="text-[10px] font-bold text-gray-300 uppercase mt-0.5">V4 STABLE</span>
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- HOME VIEW -->
-    <div id="home-view" class="hidden min-h-screen pb-20">
-        <div id="popular-section" class="relative pt-8 pb-12 mb-8">
-            <div class="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none"></div>
-            <div class="container mx-auto px-4 md:px-6 relative z-10">
-                <div class="flex items-center gap-3 mb-8">
-                    <div class="w-1.5 h-8 bg-gradient-to-b from-primary to-secondary rounded-full"></div>
-                    <h2 class="text-2xl md:text-3xl font-black tracking-tight drop-shadow-lg uppercase font-display">
-                        Trending <span class="text-gradient">Now</span>
-                    </h2>
-                </div>
-                <div id="popular-container"
-                    class="flex gap-4 md:gap-6 overflow-x-auto hide-scrollbar pb-8 snap-x snap-mandatory px-2"></div>
+    <!-- VIEWS -->
+    <div id="home-view" class="hidden min-h-screen pb-20 animate-fade-in-up">
+        <div id="popular-section" class="pt-8 mb-8 container mx-auto px-4 md:px-6">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-1.5 h-8 bg-primary rounded-full"></div>
+                <h2 class="text-2xl font-black uppercase font-display">Trending</h2>
+            </div>
+            <div id="popular-container" class="flex gap-4 overflow-x-auto hide-scrollbar pb-4 snap-x snap-mandatory">
             </div>
         </div>
 
         <div class="container mx-auto px-4 md:px-6">
-            <div class="flex items-center justify-between mb-8">
-                <div class="flex items-center gap-3">
-                    <div class="w-1.5 h-8 bg-dark-700 rounded-full"></div>
-                    <h2 class="text-xl md:text-2xl font-bold tracking-tight uppercase font-display">Latest Releases</h2>
-                </div>
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-1.5 h-8 bg-dark-700 rounded-full"></div>
+                <h2 class="text-xl font-bold uppercase font-display">Latest Updates</h2>
             </div>
-            <div id="updates-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6"></div>
+            <div id="updates-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
 
-            <div id="pagination" class="flex justify-center items-center gap-3 md:gap-6 mt-16">
-                <button id="btn-prev"
-                    class="glass hover:bg-white/10 px-5 md:px-8 py-3 rounded-2xl font-bold transition-all duration-300 hidden flex items-center gap-2">
-                    <i class="fas fa-arrow-left text-sm opacity-70"></i> Prev
-                </button>
-                <div class="glass-card px-6 py-3 rounded-2xl border-white/10">
-                    <span id="page-indicator" class="text-primary font-black text-lg md:text-xl font-display">PAGE
-                        1</span>
+            <div id="pagination" class="flex justify-center items-center gap-4 mt-12">
+                <button id="btn-prev" class="glass px-6 py-3 rounded-xl font-bold hidden">PREV</button>
+                <div class="glass-card px-6 py-3 rounded-xl">
+                    <span id="page-indicator" class="text-primary font-black font-display">PAGE 1</span>
                 </div>
-                <button id="btn-next"
-                    class="bg-gradient-to-r from-primary to-secondary px-5 md:px-8 py-3 rounded-2xl font-bold transition-all duration-300 flex items-center gap-2">
-                    Next <i class="fas fa-arrow-right text-sm"></i>
-                </button>
+                <button id="btn-next" class="bg-primary px-8 py-3 rounded-xl font-bold">NEXT</button>
             </div>
         </div>
-    </div>
-
-    <!-- HISTORY VIEW -->
-    <div id="history-view" class="hidden min-h-screen pb-20 pt-24 px-4 md:px-8 max-w-7xl mx-auto">
-        <div class="flex items-center gap-3 mb-10">
-            <div class="w-2 h-8 bg-primary rounded-full"></div>
-            <h2 class="text-2xl md:text-4xl font-black tracking-tight uppercase font-display">Continue <span
-                    class="text-gradient">Reading</span></h2>
-        </div>
-        <div id="history-page-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8"></div>
-    </div>
-
-    <!-- BOOKMARKS VIEW -->
-    <div id="bookmarks-view" class="hidden min-h-screen pb-20 pt-24 px-4 md:px-8 max-w-7xl mx-auto">
-        <div class="flex items-center gap-3 mb-10">
-            <div class="w-2 h-8 bg-blue-500 rounded-full"></div>
-            <h2 class="text-2xl md:text-4xl font-black tracking-tight uppercase font-display">My <span
-                    class="text-blue-400">Archives</span></h2>
-        </div>
-        <div id="bookmarks-page-container"
-            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6"></div>
     </div>
 
     <!-- DETAIL VIEW -->
     <div id="detail-view" class="hidden min-h-screen relative pb-20">
-        <div id="detail-bg" class="absolute inset-0 h-[50vh] bg-cover bg-center opacity-15 blur-xl z-0"></div>
-        <div class="absolute inset-0 h-[50vh] bg-gradient-to-b from-dark-900/40 via-dark-900/80 to-dark-900 z-0"></div>
-
+        <div id="detail-bg" class="absolute inset-0 h-[50vh] bg-cover bg-center opacity-10 blur-2xl"></div>
         <div class="container mx-auto px-4 py-8 relative z-10 max-w-6xl">
             <button onclick="window.history.back()"
-                class="group mb-8 inline-flex items-center gap-3 text-gray-400 hover:text-white">
-                <div
-                    class="w-10 h-10 rounded-full glass flex items-center justify-center group-hover:-translate-x-1 transition-transform">
-                    <i class="fas fa-arrow-left"></i>
-                </div>
-                <span class="font-bold tracking-wider text-sm">BACK</span>
+                class="mb-8 flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+                <i class="fas fa-arrow-left"></i> BACK
             </button>
-
-            <div class="flex flex-col md:flex-row gap-8 lg:gap-12 animate-fade-in-up">
-                <div class="flex-shrink-0 w-48 md:w-72 mx-auto md:mx-0 relative">
-                    <img id="d-image"
-                        class="w-full relative rounded-2xl shadow-2xl border border-white/10 object-cover aspect-[2/3] z-10"
-                        src="">
-                </div>
-                <div class="flex-1 flex flex-col justify-center">
-                    <h1 id="d-title" class="text-3xl md:text-5xl font-black mb-4 font-display text-white"></h1>
-                    <div class="glass-card p-5 md:p-6 rounded-2xl mb-8">
-                        <h3 class="text-primary text-xs font-bold uppercase mb-3 flex items-center gap-2">Synopsis</h3>
-                        <p id="d-synopsis" class="text-gray-300 text-sm md:text-base leading-relaxed line-clamp-5"></p>
+            <div class="flex flex-col md:flex-row gap-10 animate-fade-in-up">
+                <img id="d-image" class="w-56 md:w-72 rounded-2xl shadow-2xl border border-white/10" src="">
+                <div class="flex-1">
+                    <h1 id="d-title" class="text-3xl md:text-5xl font-black mb-6 font-display text-white"></h1>
+                    <div class="glass-card p-6 rounded-2xl mb-6">
+                        <p id="d-synopsis" class="text-gray-400 text-sm leading-relaxed"></p>
                     </div>
-                    <div id="d-info" class="flex flex-wrap gap-3 text-xs mb-8"></div>
-                    <div id="d-quick-actions" class="flex flex-wrap gap-4"></div>
+                    <div id="d-info" class="flex flex-wrap gap-2 text-xs mb-8"></div>
+                    <div id="d-quick-actions" class="flex gap-4"></div>
                 </div>
             </div>
-
-            <div class="mt-16">
-                <div id="d-chapters" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3"></div>
-            </div>
+            <div id="d-chapters" class="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
         </div>
     </div>
 
+    <!-- HISTORY/BOOKMARKS VIEW -->
+    <div id="list-view" class="hidden min-h-screen pt-24 pb-20 container mx-auto px-6">
+        <h2 id="list-title" class="text-3xl font-black uppercase mb-8 font-display"></h2>
+        <div id="list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </div>
+
     <!-- READER VIEW -->
-    <div id="reader-view" class="hidden absolute inset-0 bg-black z-[100] min-h-screen w-full">
-        <div class="fixed bottom-6 right-6 flex flex-col gap-4 z-[110] transition-opacity duration-300"
-            id="reader-floats">
-            <button onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+    <div id="reader-view" class="hidden">
+        <!-- Floating Controls -->
+        <div class="fixed bottom-6 right-6 flex flex-col gap-4 z-[110] transition-ui" id="reader-floats">
+            <button onclick="document.getElementById('reader-view').scrollTo({ top: 0, behavior: 'smooth' })"
                 class="w-12 h-12 rounded-full glass text-white flex items-center justify-center">
                 <i class="fas fa-arrow-up"></i>
             </button>
             <button id="float-next-btn"
-                class="hidden w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center">
-                <i class="fas fa-forward-step text-xl"></i>
+                class="hidden w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center shadow-lg">
+                <i class="fas fa-forward-step"></i>
             </button>
         </div>
 
-        <div class="fixed top-0 inset-x-0 bg-gradient-to-b from-black/90 to-transparent pt-4 pb-12 px-4 flex justify-between items-start z-50 transition-transform duration-300"
+        <!-- Top Bar -->
+        <div class="fixed top-0 inset-x-0 glass pt-4 pb-6 px-6 flex justify-between items-center z-50 transition-ui"
             id="reader-topbar">
-            <button onclick="window.history.back()" class="px-4 py-2 rounded-full glass flex items-center gap-2">
-                <i class="fas fa-arrow-left text-sm opacity-70"></i>
-                <span class="text-xs font-bold tracking-widest uppercase">Go Back</span>
+            <button onclick="window.history.back()"
+                class="px-4 py-2 rounded-full glass hover:bg-white/10 text-xs font-bold uppercase">
+                <i class="fas fa-arrow-left mr-2"></i> BACK
             </button>
-            <div
-                class="max-w-xs md:max-w-md bg-dark-900/80 px-6 py-2 rounded-full border border-white/10 hidden md:block">
-                <span id="r-title" class="text-xs font-bold text-gray-200 truncate block"></span>
+            <div class="max-w-md hidden md:block">
+                <span id="r-title" class="text-xs font-bold text-gray-300 truncate block"></span>
             </div>
-            <div class="w-24"></div>
+            <div class="w-20"></div>
         </div>
 
-        <div id="r-images" class="reader-image-container"></div>
+        <!-- Images Container -->
+        <div id="r-images" class="reader-image-container" onclick="toggleReaderUI()"></div>
 
-        <div id="reader-footer" class="p-6 md:p-12 text-center bg-black flex flex-col items-center">
-            <div id="reader-nav-bottom" class="flex justify-center flex-wrap gap-4 mb-12 w-full max-w-2xl"></div>
+        <!-- Footer -->
+        <div id="reader-footer" class="p-12 text-center bg-black flex flex-col items-center">
+            <div id="reader-nav-bottom" class="flex gap-4 mb-8"></div>
             <button onclick="window.history.back()"
-                class="text-gray-500 hover:text-white text-sm font-bold uppercase">Return to Details</button>
+                class="text-gray-500 hover:text-white text-xs font-bold uppercase">Back to Details</button>
         </div>
     </div>
 
