@@ -366,10 +366,18 @@
         
         readerView.addEventListener('scroll', () => {
             const currentScrollY = readerView.scrollTop;
+            const readerFloats = document.getElementById('reader-floats');
+            
+            // If UI is explicitly hidden via click, don't show on scroll up immediately 
+            // unless we've scrolled a decent amount or logic dictates otherwise.
+            // For now, let scroll show/hide normally if not in forced hidden mode.
+            
             if (currentScrollY > 100 && currentScrollY > lastScrollY) {
-                readerTopbar.style.transform = 'translateY(-100%)';
+                readerTopbar.classList.add('ui-hidden');
+                readerFloats.classList.add('ui-hidden');
             } else {
-                readerTopbar.style.transform = 'translateY(0)';
+                readerTopbar.classList.remove('ui-hidden');
+                readerFloats.classList.remove('ui-hidden');
             }
             lastScrollY = currentScrollY;
         }, { passive: true });

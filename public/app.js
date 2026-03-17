@@ -46,6 +46,22 @@ function getBadgeUI(badge) {
     </div>`;
 }
 
+function handleImageClick(event) {
+    const readerView = document.getElementById('reader-view');
+    const readerTopbar = document.getElementById('reader-topbar');
+    const readerFloats = document.getElementById('reader-floats');
+    
+    // Toggle UI visibility
+    const isHidden = readerTopbar.classList.toggle('ui-hidden');
+    readerFloats.classList.toggle('ui-hidden', isHidden);
+    
+    // Smooth scroll down
+    readerView.scrollBy({
+        top: window.innerHeight * 0.7,
+        behavior: 'smooth'
+    });
+}
+
 // ══════════════════════════════════════════════════
 //  PERSISTENCE (Bookmarks & History)
 // ══════════════════════════════════════════════════
@@ -497,7 +513,8 @@ async function renderReader(url, title) {
 
         container.innerHTML = data.images.map((src, i) => `
             <img src="${proxify(src)}"
-                class="w-full relative z-10 transition-opacity duration-500 opacity-0"
+                class="w-full relative z-10 transition-opacity duration-500 opacity-0 cursor-pointer"
+                onclick="handleImageClick(event)"
                 onload="this.classList.remove('opacity-0')"
                 loading="${i < 4 ? 'eager' : 'lazy'}"
                 onerror="this.style.display='none'">`

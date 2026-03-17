@@ -214,6 +214,29 @@ body {
     height: auto;
     display: block;
     box-shadow: 0 0 50px rgba(0,0,0,0.5);
+    margin: 0 auto;
+}
+
+/* UI Toggle State */
+.ui-hidden {
+    transform: translateY(-100%) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+#reader-floats.ui-hidden {
+    transform: translateY(20px);
+}
+
+@media (max-width: 768px) {
+    .reader-image-container {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+    .reader-image-container img {
+        width: 100% !important;
+        box-shadow: none !important;
+    }
 }
 
 /* Utilities */
