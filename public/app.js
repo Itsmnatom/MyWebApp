@@ -442,6 +442,9 @@ async function renderDetail(url) {
 
         const qaEl = document.getElementById('d-quick-actions');
         qaEl.innerHTML = '';
+        
+        // Sync read chapters from storage before rendering
+        READ_CHAPTERS = JSON.parse(localStorage.getItem('sm_read_chapters') || '[]');
 
         window.currentManga = { title: d.title, url, image: d.image, lastChapter: d.chapters?.[0]?.name || '' };
         window.handleBookmarkToggle = () => toggleBookmark(window.currentManga);
