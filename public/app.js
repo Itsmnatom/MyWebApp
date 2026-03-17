@@ -155,7 +155,6 @@ async function handleLocation() {
 
     if (path === '/read' && targetUrl) {
         document.getElementById('reader-view').classList.remove('hidden');
-        document.body.style.overflow = 'hidden'; 
         document.getElementById('main-header').classList.add('-translate-y-full'); 
         await renderReader(targetUrl, targetTitle || 'Reading...');
     } else if (path === '/history') {

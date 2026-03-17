@@ -348,11 +348,11 @@
     <!-- ============================================
          READER VIEW
     ============================================ -->
-    <div id="reader-view" class="hidden fixed inset-0 bg-dark-900 z-[100] overflow-y-auto scroll-smooth">
+    <div id="reader-view" class="hidden absolute inset-0 bg-dark-900 z-[100] min-h-screen scroll-smooth">
         
         <!-- Interactive Float Controls -->
         <div class="fixed bottom-6 right-6 flex flex-col gap-4 z-[110] transition-opacity duration-300" id="reader-floats">
-            <button onclick="document.getElementById('reader-view').scrollTo({ top: 0, behavior: 'smooth' })" class="w-12 h-12 rounded-full glass hover:bg-primary/20 hover:border-primary/50 text-white flex items-center justify-center shadow-2xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1">
+            <button onclick="window.scrollTo({ top: 0, behavior: 'smooth' })" class="w-12 h-12 rounded-full glass hover:bg-primary/20 hover:border-primary/50 text-white flex items-center justify-center shadow-2xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1">
                 <i class="fas fa-arrow-up"></i>
             </button>
             <button id="float-next-btn" class="hidden w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center shadow-[0_0_30px_rgba(255,69,0,0.5)] transition-all duration-300 hover:scale-110">
@@ -394,17 +394,20 @@
     <script src="/app.js"></script>
     <script>
         // Reader scroll hide/show UI logic
-        const readerView = document.getElementById('reader-view');
         const readerTopbar = document.getElementById('reader-topbar');
         let lastScrollY = 0;
         
-        readerView.addEventListener('scroll', () => {
-            const currentScrollY = readerView.scrollTop;
+        window.addEventListener('scroll', () => {
+            // Only execute if reader is visible
+            const readerView = document.getElementById('reader-view');
+            if (readerView.classList.contains('hidden')) return;
+
+            const currentScrollY = window.scrollY;
             const readerFloats = document.getElementById('reader-floats');
             const readerFooter = document.getElementById('reader-footer');
             
             // Hide UI elements on scroll down, show on scroll up
-            if (currentScrollY > 50 && currentScrollY > lastScrollY) {
+            if (currentScrollY > 100 && currentScrollY > lastScrollY) {
                 readerTopbar.classList.add('ui-hidden');
                 readerFloats.classList.add('ui-hidden');
                 if (readerFooter) readerFooter.classList.add('ui-hidden');
