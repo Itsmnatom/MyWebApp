@@ -944,14 +944,15 @@ async function renderReader(url, title) {
 
         container.innerHTML = data.images.map((src, i) => `
             <img src="${proxify(src)}"
-                class="w-full block mb-10 md:mb-12 transition-opacity duration-300 opacity-0 cursor-pointer"
+                class="w-full block transition-opacity duration-300 opacity-0 cursor-pointer"
+                onclick="handleImageClick(event)"
                 ondblclick="toggleImageZoom(this)"
                 onload="this.classList.remove('opacity-0')"
                 loading="${i < 4 ? 'eager' : 'lazy'}"
                 onerror="this.style.display='none'">`).join('');
         
-        container.classList.add('cursor-pointer');
-        container.onclick = (e) => handleImageClick(e);
+        container.classList.remove('cursor-pointer');
+        container.onclick = null;
                 
         readerState.nextChapterPreloaded = false;
 
