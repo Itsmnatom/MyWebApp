@@ -474,9 +474,11 @@ async function handleLocation() {
         if (el) { el.classList.add('hidden'); el.classList.remove('animate-fade-in-up'); }
     });
 
-    document.getElementById('main-header').classList.remove('-translate-y-full');
-    document.body.style.overflow = 'auto';
-    document.documentElement.style.overflow = 'auto';
+    document.getElementById('main-header').classList.remove('-translate-y-full', 'hidden');
+    document.body.style.overflowX = 'hidden';
+    document.body.style.overflowY = 'auto';
+    document.documentElement.style.overflowX = 'hidden';
+    document.documentElement.style.overflowY = 'auto';
     // Reset scroll at the end for better reliability after content loads
     readerState.prevPath = null;
 
@@ -486,10 +488,12 @@ async function handleLocation() {
     }
 
     if (path === '/read' && targetUrl) {
-        document.body.style.overflow = 'auto';
-        document.documentElement.style.overflow = 'auto';
+        document.body.style.overflowX = 'hidden';
+        document.body.style.overflowY = 'auto';
+        document.documentElement.style.overflowX = 'hidden';
+        document.documentElement.style.overflowY = 'auto';
         document.getElementById('reader-view').classList.remove('hidden');
-        document.getElementById('main-header').classList.add('-translate-y-full');
+        document.getElementById('main-header').classList.add('hidden'); // Completely hide to prevent layout shift on mobile
         await renderReader(targetUrl, targetTitle || 'Reading...');
     } else if (path === '/search') {
         const sView = document.getElementById('search-view');
