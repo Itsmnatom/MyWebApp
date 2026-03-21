@@ -474,8 +474,7 @@ async function handleLocation() {
     document.getElementById('main-header').classList.remove('-translate-y-full');
     document.body.style.overflow = 'auto';
     document.documentElement.style.overflow = 'auto';
-    window.scrollTo(0, 0); 
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    // Reset scroll at the end for better reliability after content loads
     readerState.prevPath = null;
 
     // Track main browsing paths to avoid backing into Reader from Detail
@@ -522,6 +521,13 @@ async function handleLocation() {
             if (cachedHome) { try { displayHome(JSON.parse(cachedHome), 1, true); } catch (e) { } }
         }
         await renderHome(page);
+    }
+    
+    // RELIABLE RESET: Jump to top after content is likely rendered
+    if (path !== '/read') {
+        window.scrollTo(0, 0);
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
     }
 }
 
@@ -1022,6 +1028,10 @@ async function renderReader(url, title) {
 
         // FEATURE B: restore progress
         restoreScrollProgress(readerState.currentNormUrl);
+        
+        // RELIABLE RESET: Force reader view to top after all images are in the DOM
+        const rv = document.getElementById('reader-view');
+        if (rv) rv.scrollTop = 0;
 
     } catch (e) {
         container.innerHTML = `<div class="mt-40 text-center px-4 max-w-md mx-auto animate-fade-in-up">
