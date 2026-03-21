@@ -79,7 +79,9 @@ const CACHE = {
 
 // --- Optimization & Masking Config ---
 const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY || ''; // If provided, uses ScraperAPI.com (Free 5k/mo)
-const PROXY_URL = process.env.PROXY_URL || '';           // Generic Proxy URL support
+const FLARESOLVERR_URL = process.env.FLARESOLVERR_URL || ''; // E.g., http://localhost:8191/v1
+const PROXY_LIST = (process.env.PROXY_LIST || process.env.PROXY_URL || '').split(',').map(p => p.trim()).filter(Boolean);
+let proxyIndex = 0;
 
 let _gotScraping = null;
 async function getGotScraping() {
@@ -114,10 +116,25 @@ async function fetchHtml(url) {
             options.http2 = false; // ScraperAPI works better with http1
             console.log('[SpeedManga] Masking through ScraperAPI...');
         }
-        // 2. Else if a Generic Proxy is provided
-        else if (PROXY_URL) {
-            options.proxyUrl = PROXY_URL;
-            console.log('[SpeedManga] Masking through Proxy:', PROXY_URL.substring(0, 20) + '...');
+        // 2. FlareSolverr (For 100% bypass of Cloudflare)
+        else if (FLARESOLVERR_URL) {
+            console.log('[SpeedManga] Masking through FlareSolverr...');
+            const fsResponse = await got.post(FLARESOLVERR_URL, {
+                json: { cmd: 'request.get', url: targetUrl, maxTimeout: 60000 },
+                responseType: 'json'
+            });
+            if (fsResponse.body && fsResponse.body.solution && fsResponse.body.solution.response) {
+                console.log(`[fetchHtml] Success [FlareSolverr] for ${url.substring(0, 60)}...`);
+                return fsResponse.body.solution.response; // Raw HTML from FlareSolverr
+            }
+            throw new Error('FlareSolverr empty response');
+        }
+        // 3. Distributed Proxy List
+        else if (PROXY_LIST.length > 0) {
+            const proxyUrl = PROXY_LIST[proxyIndex];
+            proxyIndex = (proxyIndex + 1) % PROXY_LIST.length;
+            options.proxyUrl = proxyUrl;
+            console.log(`[SpeedManga] Masking through Distributed Proxy (${proxyIndex}/${PROXY_LIST.length}):`, proxyUrl.substring(0, 20) + '...');
         }
 
         console.log('[SpeedManga] Initiating fetch for:', url);
@@ -138,7 +155,7 @@ async function fetchHtml(url) {
 // ══════════════════════════════════════════════════
 //  FILTER + SORT (ตัด 18+, ดัน Manhwa)
 // ══════════════════════════════════════════════════
-const BAD_WORDS = ['18+', '18 +', 'nc-17', 'smut', 'mature', 'ผู้ใหญ่', 'ntr', 'adult', 'Adult'];
+const BAD_WORDS = ['18+', '18 +', 'nc-17', 'smut', 'mature', 'ผู้ใหญ่', 'ntr', 'adult', 'Adult', 'audlt'];
 
 function filterAndSort(items) {
     const seen = new Set();
@@ -268,13 +285,21 @@ async function scrapeHome(page) {
 // ══════════════════════════════════════════════════
 app.get('/api/manga/search', async (req, res) => {
     const q = (req.query.q || '').trim();
-    if (!q) return res.status(400).json({ error: 'Missing query' });
+    const genre = (req.query.genre || '').trim();
+    const status = (req.query.status || '').trim();
+    
+    if (!q && !genre && !status) return res.status(400).json({ error: 'Missing query parameters' });
+    
     try {
-        const fetchUrl = `${TARGET_SITE}/?s=${encodeURIComponent(q)}&post_type=wp-manga`;
+        let fetchUrl = `${TARGET_SITE}/?s=${encodeURIComponent(q)}&post_type=wp-manga`;
+        if (genre) genre.split(',').forEach(g => fetchUrl += `&genre[]=${encodeURIComponent(g.trim())}`);
+        if (status) status.split(',').forEach(s => fetchUrl += `&status[]=${encodeURIComponent(s.trim())}`);
+        
+        console.log(`[API] Searching: ${fetchUrl}`);
         const html = await fetchHtml(fetchUrl);
         const $ = cheerio.load(html);
         const results = [], seen = new Set();
-        $('.listupd .bs, .row-search-chapter, .manga-item').each((_, el) => {
+        $('.listupd .bs, .row-search-chapter, .manga-item, .c-tabs-item__content').each((_, el) => {
             const a = $(el).find('a').first();
             const url = a.attr('href') || '';
             if (!url || seen.has(url)) return;
@@ -283,11 +308,12 @@ app.get('/api/manga/search', async (req, res) => {
             if (!title) return;
             const imgEl = $(el).find('img').first();
             const image = imgEl.attr('data-src') || imgEl.attr('data-lazy-src') || imgEl.attr('src') || '';
-            const lastChapter = $(el).find('.epxs, .tab-chapter a').first().text().trim() || '';
-            const badge = $(el).find('.colored, .type').first().text().trim() || '';
+            const lastChapter = $(el).find('.epxs, .tab-chapter a, .font-meta').first().text().trim() || '';
+            const badge = $(el).find('.colored, .type, .manga-title-badges').first().text().trim() || '';
             results.push({ title, image, url, lastChapter, badge });
         });
-        res.json({ results: results.slice(0, 30), query: q });
+        // Apply Adult Filter to search results
+        res.json({ results: filterAndSort(results).slice(0, 30), query: q, genre, status });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

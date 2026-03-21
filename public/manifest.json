@@ -1,0 +1,21 @@
+{
+  "name": "SpeedManga Premium",
+  "short_name": "SpeedManga",
+  "description": "Premium Ultra-Fast Manga Reader",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#FF4500",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

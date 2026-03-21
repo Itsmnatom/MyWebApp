@@ -14,6 +14,13 @@
 const API = '/api';
 let lastMainPath = '/';
 
+// Register PWA Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW Reg Failed:', err));
+    });
+}
+
 // ══════════════════════════════════════════════════
 //  HELPERS
 // ══════════════════════════════════════════════════
@@ -63,6 +70,31 @@ function extractChapterNameFromUrl(url) {
     return match ? `Chapter ${match[1]}` : '';
 }
 
+function extractAverageColor(imgEl) {
+    try {
+        if (!imgEl.complete || !imgEl.naturalWidth) return [255, 69, 0];
+        const canvas = document.createElement('canvas');
+        canvas.width = 1; canvas.height = 1;
+        const ctx = canvas.getContext('2d', {willReadFrequently: true});
+        ctx.drawImage(imgEl, 0, 0, 1, 1);
+        const data = ctx.getImageData(0, 0, 1, 1).data;
+        let [r,g,b] = [data[0], data[1], data[2]];
+        if (r<40 && g<40 && b<40) { r+=40; g+=40; b+=40; } // Boost if too dark
+        return [r, g, b];
+    } catch(e) { return [255, 69, 0]; }
+}
+
+function applyDynamicTheme(rgbArr) {
+    if (!rgbArr) {
+        document.documentElement.style.setProperty('--color-primary-rgb', '255 69 0');
+        document.documentElement.style.setProperty('--color-secondary-rgb', '255 140 0');
+        return;
+    }
+    const [r, g, b] = rgbArr;
+    document.documentElement.style.setProperty('--color-primary-rgb', `${r} ${g} ${b}`);
+    document.documentElement.style.setProperty('--color-secondary-rgb', `${Math.min(255, r+40)} ${Math.max(0, g-20)} ${Math.min(255, b+20)}`);
+}
+
 // ══════════════════════════════════════════════════
 //  PERSISTENCE
 // ══════════════════════════════════════════════════
@@ -71,11 +103,13 @@ let BOOKMARKS = JSON.parse(localStorage.getItem('sm_bookmarks') || '[]');
 let HISTORY = JSON.parse(localStorage.getItem('sm_history') || '[]');
 let READ_CHAPTERS = JSON.parse(localStorage.getItem('sm_read_chapters') || '[]');
 let SCROLL_PROGRESS = JSON.parse(localStorage.getItem('sm_scroll_progress') || '{}');
+let SM_STATS = JSON.parse(localStorage.getItem('sm_stats') || '{"totalRead": 0, "weekRead": 0, "lastUpdated": 0}');
 
 function saveState() {
     localStorage.setItem('sm_bookmarks', JSON.stringify(BOOKMARKS.slice(0, 50)));
     localStorage.setItem('sm_history', JSON.stringify(HISTORY.slice(0, 15)));
     localStorage.setItem('sm_read_chapters', JSON.stringify(READ_CHAPTERS.slice(0, 500)));
+    localStorage.setItem('sm_stats', JSON.stringify(SM_STATS));
     const keys = Object.keys(SCROLL_PROGRESS);
     if (keys.length > 200) keys.slice(0, keys.length - 200).forEach(k => delete SCROLL_PROGRESS[k]);
     localStorage.setItem('sm_scroll_progress', JSON.stringify(SCROLL_PROGRESS));
@@ -93,7 +127,17 @@ function addToHistory(manga, chapter) {
     const entry = { title: manga.title, mangaUrl: manga.url, image: manga.image, chapterName: chapter.name, chapterUrl: chapter.url, time: Date.now() };
     HISTORY = [entry, ...HISTORY.filter(h => h.mangaUrl !== manga.url)].slice(0, 15);
     const normUrl = normalizeChapterUrl(chapter.url);
-    if (normUrl && !READ_CHAPTERS.includes(normUrl)) READ_CHAPTERS.unshift(normUrl);
+    if (normUrl && !READ_CHAPTERS.includes(normUrl)) {
+        READ_CHAPTERS.unshift(normUrl);
+        SM_STATS.totalRead = (SM_STATS.totalRead || 0) + 1;
+        const now = Date.now();
+        if (now - (SM_STATS.lastUpdated || 0) > 7 * 24 * 60 * 60 * 1000) {
+            SM_STATS.weekRead = 1;
+        } else {
+            SM_STATS.weekRead = (SM_STATS.weekRead || 0) + 1;
+        }
+        SM_STATS.lastUpdated = now;
+    }
     saveState();
 }
 
@@ -130,7 +174,11 @@ function initSearch() {
 
     input.addEventListener('keydown', e => {
         if (e.key === 'Escape') { input.value = ''; clearBtn.classList.add('hidden'); closeSearchResults(); input.blur(); }
-        if (e.key === 'Enter') { clearTimeout(_searchDebounce); doSearch(input.value.trim()); }
+        if (e.key === 'Enter') { 
+            clearTimeout(_searchDebounce); 
+            closeSearchResults(); 
+            navigate(`/search?q=${encodeURIComponent(input.value.trim())}`); 
+        }
     });
 
     clearBtn.addEventListener('click', () => {
@@ -386,22 +434,41 @@ async function preloadNextChapter(nextUrl) {
 //  ROUTING
 // ══════════════════════════════════════════════════
 
-function navigate(path) {
+function navigate(path, clickedEl = null) {
     const currentPathname = window.location.pathname;
     const newPathname = path.split('?')[0];
 
     // Save last main path (home/history/bookmarks/alt) for "Back" behavior from Detail view
-    if (['/', '/history', '/bookmarks', '/alt'].includes(currentPathname)) {
-        lastMainPath = currentPathname;
+    if (['/', '/history', '/bookmarks', '/alt', '/search'].includes(currentPathname)) {
+        lastMainPath = currentPathname + window.location.search;
     }
 
     // Clear currentChapters if navigating away from reader or detail view context
     if (newPathname !== '/read' && currentPathname !== '/read' && newPathname !== '/manga' && currentPathname !== '/manga') {
         currentChapters = [];
     }
+    
+    if (newPathname !== '/read' && newPathname !== '/manga') {
+        applyDynamicTheme(null);
+    }
 
-    window.history.pushState({}, '', path);
-    handleLocation();
+    if (document.startViewTransition && clickedEl) {
+        const coverImg = clickedEl.tagName === 'IMG' ? clickedEl : clickedEl.querySelector('img');
+        if (coverImg && newPathname === '/manga') {
+            coverImg.style.viewTransitionName = 'manga-cover';
+            const dImg = document.getElementById('d-image');
+            if (dImg) dImg.src = coverImg.src; // pre-fill for transition target
+        }
+        
+        document.startViewTransition(async () => {
+            window.history.pushState({}, '', path);
+            await handleLocation();
+            if (coverImg) coverImg.style.viewTransitionName = '';
+        });
+    } else {
+        window.history.pushState({}, '', path);
+        handleLocation();
+    }
 }
 
 window.addEventListener('popstate', handleLocation);
@@ -413,7 +480,7 @@ async function handleLocation() {
     const targetTitle = params.get('title');
     const page = Math.max(1, parseInt(params.get('page')) || 1);
 
-    ['home-view', 'detail-view', 'reader-view', 'history-view', 'bookmarks-view', 'alt-view', 'search-view'].forEach(id => {
+    ['home-view', 'detail-view', 'reader-view', 'history-view', 'bookmarks-view', 'alt-view', 'search-view', 'profile-view'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.classList.add('hidden'); el.classList.remove('animate-fade-in-up'); }
     });
@@ -438,7 +505,7 @@ async function handleLocation() {
     } else if (path === '/search') {
         const sView = document.getElementById('search-view');
         if (sView) { sView.classList.remove('hidden'); sView.classList.add('animate-fade-in-up'); }
-        renderSearchPage(params.get('q') || '');
+        renderSearchPage(params.get('q') || '', params.get('genre') || '', params.get('status') || '');
     } else if (path === '/history') {
         const hView = document.getElementById('history-view');
         hView.classList.remove('hidden'); hView.classList.add('animate-fade-in-up');
@@ -470,34 +537,92 @@ async function handleLocation() {
 //  RENDER: SEARCH PAGE
 // ══════════════════════════════════════════════════
 
-async function renderSearchPage(q) {
+window.updateSearchFilter = function(type, val) {
+    const params = new URLSearchParams(window.location.search);
+    const currentQ = params.get('q') || '';
+    let currentGenre = params.get('genre') || '';
+    let currentStatus = params.get('status') || '';
+    
+    if (type === 'status') {
+        currentStatus = currentStatus === val ? '' : val;
+    } else if (type === 'genre') {
+        let gArr = currentGenre ? currentGenre.split(',') : [];
+        if (gArr.includes(val)) gArr = gArr.filter(g => g !== val);
+        else gArr.push(val);
+        currentGenre = gArr.join(',');
+    }
+    
+    let newUrl = `/search?q=${encodeURIComponent(currentQ)}`;
+    if (currentGenre) newUrl += `&genre=${encodeURIComponent(currentGenre)}`;
+    if (currentStatus) newUrl += `&status=${encodeURIComponent(currentStatus)}`;
+    navigate(newUrl);
+};
+
+async function renderSearchPage(q, genre = '', status = '') {
     const container = document.getElementById('search-page-container');
     const titleEl = document.getElementById('search-page-title');
+    const filtersEl = document.getElementById('search-filters');
     if (!container) return;
-    if (titleEl) titleEl.textContent = q ? `Results: "${q}"` : 'Search';
-    if (!q) {
-        container.innerHTML = `<div class="col-span-full py-20 text-center text-gray-500 font-bold uppercase tracking-widest text-sm">Type something to search</div>`;
+    
+    if (filtersEl) {
+        const genresList = ['action', 'fantasy', 'romance', 'comedy', 'drama', 'isekai', 'adventure', 'martial-arts'];
+        const statuses = ['ongoing', 'completed'];
+        
+        const gHTML = genresList.map(g => `<button onclick="updateSearchFilter('genre', '${g}')" class="px-4 py-1.5 md:py-2 rounded-xl text-[10px] md:text-xs font-bold uppercase tracking-wider transition-all border ${genre.includes(g) ? 'bg-primary text-white border-primary shadow-[0_0_15px_rgba(255,69,0,0.4)]' : 'glass text-gray-400 border-white/10 hover:border-primary/50 hover:text-white'}">${g}</button>`).join('');
+        const sHTML = statuses.map(s => `<button onclick="updateSearchFilter('status', '${s}')" class="px-4 py-1.5 md:py-2 rounded-xl text-[10px] md:text-xs font-bold uppercase tracking-wider transition-all border ${status === s ? 'bg-primary text-white border-primary shadow-[0_0_15px_rgba(255,69,0,0.4)]' : 'glass text-gray-400 border-white/10 hover:border-primary/50 hover:text-white'}">${s}</button>`).join('');
+
+        filtersEl.innerHTML = `
+            <div class="w-full flex flex-col gap-3">
+                <div class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+                    <span class="text-[9px] text-gray-500 font-black uppercase tracking-widest flex-shrink-0 mr-1"><i class="fas fa-tags mr-1"></i> Genre</span>
+                    ${gHTML}
+                </div>
+                <div class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+                    <span class="text-[9px] text-gray-500 font-black uppercase tracking-widest flex-shrink-0 mr-1"><i class="fas fa-signal mr-1"></i> Status</span>
+                    ${sHTML}
+                    ${(genre || status) ? `<button onclick="navigate('/search?q=${encodeURIComponent(q)}')" class="px-3 py-1.5 ml-auto rounded-xl text-[10px] font-bold uppercase tracking-wider bg-red-500/20 text-red-400 hover:bg-red-500/40 transition-all flex-shrink-0 border border-red-500/30"><i class="fas fa-times mr-1"></i>Reset</button>` : ''}
+                </div>
+            </div>`;
+    }
+
+    if (titleEl) {
+        if (q) titleEl.textContent = `Results: "${q}"`;
+        else if (genre || status) titleEl.textContent = 'Filtered Library';
+        else titleEl.textContent = 'Explore';
+    }
+    
+    if (!q && !genre && !status) {
+        container.innerHTML = `<div class="col-span-full py-20 text-center text-gray-500 font-bold uppercase tracking-widest text-sm glass-card rounded-2xl border-white/5"><i class="fas fa-search text-3xl mb-4 block opacity-50"></i>Select filters or type something to search</div>`;
         return;
     }
-    container.innerHTML = spinnerHTML(`Searching "${q}"...`);
+    
+    container.innerHTML = spinnerHTML(`Searching...`);
     try {
-        const res = await fetch(`${API}/manga/search?q=${encodeURIComponent(q)}`);
+        let fetchUrl = `${API}/manga/search?q=${encodeURIComponent(q)}`;
+        if (genre) fetchUrl += `&genre=${encodeURIComponent(genre)}`;
+        if (status) fetchUrl += `&status=${encodeURIComponent(status)}`;
+        
+        const res = await fetch(fetchUrl);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (!data.results?.length) {
-            container.innerHTML = `<div class="col-span-full py-20 text-center text-gray-500 font-bold uppercase tracking-widest text-sm">No results for "${clean(q)}"</div>`;
+            container.innerHTML = `<div class="col-span-full py-20 text-center text-gray-500 font-bold uppercase tracking-widest text-sm glass-card rounded-2xl border-white/5"><i class="fas fa-ghost text-3xl mb-4 block opacity-50"></i>No results found</div>`;
             return;
         }
         container.innerHTML = data.results.map((m, i) => `
-            <div onclick="navigate('/manga?url=${encodeURIComponent(m.url)}')"
-                class="glass-card rounded-2xl overflow-hidden group cursor-pointer flex flex-col border border-white/5 active:scale-95 transition-all duration-300 animate-fade-in-up" style="animation-delay:${i * 0.04}s">
-                <div class="relative overflow-hidden rounded-t-2xl aspect-[2/3]">
+            <div onclick="navigate('/manga?url=${encodeURIComponent(m.url)}', this)"
+                class="glass-card rounded-2xl overflow-hidden group cursor-pointer flex flex-col border border-white/5 active:scale-95 transition-all duration-300 animate-fade-in-up hover:border-primary/50 hover:shadow-[0_8px_30px_rgba(255,69,0,0.2)]" style="animation-delay:${i * 0.04}s">
+                <div class="relative overflow-hidden rounded-t-2xl aspect-[2/3] shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
                     <img src="${proxify(m.image)}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 bg-dark-800" loading="lazy">
-                    <div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-dark-900 to-transparent"></div>
+                    <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-transparent to-transparent opacity-80 group-hover:opacity-60 transition-opacity"></div>
+                    ${getBadgeUI(m.badge)}
                 </div>
-                <div class="p-3">
-                    <h3 class="text-xs font-bold font-display line-clamp-2 group-hover:text-primary transition-colors">${clean(m.title)}</h3>
-                    <p class="text-[10px] text-gray-500 mt-1 font-bold uppercase tracking-wider">${clean(m.lastChapter || '')}</p>
+                <div class="p-3 bg-dark-800/50 flex-1 flex flex-col justify-between">
+                    <h3 class="text-xs font-bold font-display line-clamp-2 group-hover:text-primary transition-colors leading-tight mb-2">${clean(m.title)}</h3>
+                    <div class="flex items-center gap-1.5">
+                        <i class="fas fa-bolt text-[8px] text-primary pt-0.5"></i>
+                        <p class="text-[10px] text-gray-400 font-black uppercase tracking-wider truncate">${clean(m.lastChapter || 'N/A')}</p>
+                    </div>
                 </div>
             </div>`).join('');
     } catch (e) { container.innerHTML = errorHTML(e.message); }
@@ -539,8 +664,8 @@ function renderBookmarksPage() {
     const container = document.getElementById('bookmarks-page-container');
     if (BOOKMARKS.length > 0) {
         container.innerHTML = BOOKMARKS.map(b => `
-            <div onclick="navigate('/manga?url=${encodeURIComponent(b.url)}')" class="group cursor-pointer">
-                <div class="relative overflow-hidden rounded-2xl aspect-[2/3] mb-3 shadow-2xl border border-white/5 group-hover:border-blue-500/50 transition-all">
+            <div onclick="navigate('/manga?url=${encodeURIComponent(b.url)}', this)" class="group cursor-pointer">
+                <div class="relative overflow-hidden rounded-2xl aspect-[2/3] mb-3 shadow-2xl border border-white/5 group-hover:border-primary/50 transition-all">
                     <img src="${proxify(b.image)}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 bg-dark-800" loading="lazy">
                     <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-transparent to-transparent opacity-60"></div>
                 </div>
@@ -708,6 +833,7 @@ async function renderDetail(url) {
         document.getElementById('d-title').innerText = d.title || 'Unknown Classified';
         document.getElementById('d-synopsis').innerText = d.synopsis || 'No synopsis data recovered.';
         const proxifiedImg = proxify(d.image);
+        mainImg.onload = () => { applyDynamicTheme(extractAverageColor(mainImg)); };
         mainImg.src = proxifiedImg;
         document.getElementById('detail-bg').style.backgroundImage = `url('${proxifiedImg}')`;
 
@@ -837,6 +963,7 @@ async function renderReader(url, title) {
             <img src="${proxify(src)}"
                 class="w-full block transition-opacity duration-300 opacity-0 cursor-pointer"
                 onclick="handleImageClick(event)"
+                ondblclick="toggleImageZoom(this)"
                 onload="this.classList.remove('opacity-0')"
                 loading="${i < 4 ? 'eager' : 'lazy'}"
                 onerror="this.style.display='none'">`).join('');
@@ -926,31 +1053,101 @@ function onReaderScroll() {
 //  GLOBAL HANDLERS
 // ══════════════════════════════════════════════════
 
-function handleImageClick(e, skipScroll = false) {
-    // 1. Toggle UI Visibility
-    const top = document.getElementById('reader-topbar');
-    const floats = document.getElementById('reader-floats');
-    const footer = document.getElementById('reader-footer');
+function handleImageClick(e, isImmersiveTrigger = false) {
+    const readerView = document.getElementById('reader-view');
+    const y = e.clientY;
+    const h = window.innerHeight;
     
-    [top, floats, footer].forEach(el => {
-        if (el) el.classList.toggle('ui-hidden');
-    });
-
-    // 2. Scroll if it's an image click (not a trigger area click)
-    if (!skipScroll) {
-        const readerView = document.getElementById('reader-view');
-        if (readerView) {
-            // Scroll by 80% of viewport height
-            readerView.scrollBy({ top: window.innerHeight * 0.8, behavior: 'smooth' });
+    // Zen Mode Toggle (Middle 40% of screen OR Immersive Trigger text clicked)
+    if (isImmersiveTrigger || (y > h * 0.3 && y < h * 0.7)) {
+        const top = document.getElementById('reader-topbar');
+        const floats = document.getElementById('reader-floats');
+        const pbar = document.getElementById('r-progress-bar')?.parentElement;
+        [top, floats, pbar].forEach(el => {
+            if (el) el.classList.toggle('ui-hidden');
+        });
+        const settings = document.getElementById('reader-settings');
+        if (settings && !settings.classList.contains('hidden')) {
+            toggleReaderSettings();
         }
+        return;
     }
-    
-    // Closer settings if open
-    const settings = document.getElementById('reader-settings');
-    if (settings && !settings.classList.contains('hidden')) {
-        toggleReaderSettings();
+
+    // Smart Scroll
+    if (readerView) {
+        if (y <= h * 0.3) readerView.scrollBy({ top: -window.innerHeight * 0.8, behavior: 'smooth' });
+        else readerView.scrollBy({ top: window.innerHeight * 0.8, behavior: 'smooth' });
     }
 }
+
+let zoomedImg = null;
+window.toggleImageZoom = function(img) {
+    if (zoomedImg === img) {
+        img.style.transform = 'scale(1)';
+        img.style.transformOrigin = 'center center';
+        zoomedImg = null;
+    } else {
+        if (zoomedImg) zoomedImg.style.transform = 'scale(1)';
+        img.style.transform = 'scale(2)';
+        img.style.transformOrigin = 'center center';
+        img.style.transition = 'transform 0.3s ease';
+        zoomedImg = img;
+    }
+};
+
+// ══════════════════════════════════════════════════
+//  GAMIFICATION / PROFILE
+// ══════════════════════════════════════════════════
+
+window.renderProfilePage = function() {
+    const container = document.getElementById('profile-page-container');
+    if (!container) return;
+    
+    const stats = JSON.parse(localStorage.getItem('sm_stats') || '{"totalRead": 0, "weekRead": 0}');
+    const total = stats.totalRead || 0;
+    const week = stats.weekRead || 0;
+    
+    let badge = { title: 'Novice', icon: 'fa-seedling', desc: 'Read your first chapters', color: 'text-green-500' };
+    if (total >= 1000) badge = { title: 'เซียนมังงะ (Manga Master)', icon: 'fa-crown', desc: 'Read 1,000+ Chapters', color: 'text-amber-400' };
+    else if (total >= 500) badge = { title: 'Otaku', icon: 'fa-dragon', desc: 'Read 500+ Chapters', color: 'text-pink-500' };
+    else if (total >= 100) badge = { title: 'Bookworm', icon: 'fa-book-open', desc: 'Read 100+ Chapters', color: 'text-blue-400' };
+
+    container.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Badge Card -->
+            <div class="glass-card rounded-3xl p-8 flex flex-col items-center justify-center text-center border-t border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+                <div class="w-32 h-32 rounded-full border-4 border-white/5 bg-dark-800 flex items-center justify-center mb-6 shadow-xl relative overflow-hidden group">
+                    <div class="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent"></div>
+                    <i class="fas ${badge.icon} ${badge.color} text-6xl group-hover:scale-125 transition-transform duration-500"></i>
+                </div>
+                <h3 class="text-3xl font-black font-display uppercase tracking-widest ${badge.color}">${badge.title}</h3>
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mt-2">${badge.desc}</p>
+            </div>
+            
+            <!-- Stats Column -->
+            <div class="space-y-6">
+                <div class="glass-card rounded-3xl p-6 border-l border-white/5 flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Chapters Read (All Time)</p>
+                        <h4 class="text-4xl font-black font-display text-white">${total.toLocaleString()}</h4>
+                    </div>
+                    <i class="fas fa-layer-group text-4xl text-white/5"></i>
+                </div>
+                <div class="glass-card rounded-3xl p-6 border-l border-white/5 flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] text-pink-400/80 font-bold uppercase tracking-widest mb-1">Chapters Read (This Week)</p>
+                        <h4 class="text-4xl font-black font-display text-pink-500">${week.toLocaleString()}</h4>
+                    </div>
+                    <i class="fas fa-fire text-4xl text-pink-500/10"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-8 text-center text-[10px] font-bold text-gray-600 uppercase tracking-widest">
+            More achievements arriving in future updates! Keep reading!
+        </div>
+    `;
+};
 
 function exitToDetail() {
     const params = new URLSearchParams(window.location.search);

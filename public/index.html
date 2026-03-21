@@ -4,11 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+        content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <meta name="referrer" content="no-referrer">
     <meta name="description" content="SpeedManga - Ultra fast manga reader with premium experience.">
     <title>SpeedManga - Premium Experience</title>
     <link rel="icon" type="image/png" href="/favicon.png">
+    
+    <!-- PWA Setup -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#FF4500">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/favicon.png">
 
     <!-- Speed & Performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,8 +38,8 @@
                         display: ['Outfit', 'sans-serif'],
                     },
                     colors: {
-                        primary: '#FF4500',
-                        secondary: '#FF8C00',
+                        primary: 'rgb(var(--color-primary-rgb) / <alpha-value>)',
+                        secondary: 'rgb(var(--color-secondary-rgb) / <alpha-value>)',
                         dark: {
                             900: '#050505',
                             800: '#121212',
@@ -56,6 +63,11 @@
     </script>
 
     <style>
+        :root {
+            --color-primary-rgb: 255 69 0;
+            --color-secondary-rgb: 255 140 0;
+        }
+
         /* Base Styling */
         body {
             background-color: #050505;
@@ -63,8 +75,8 @@
             margin: 0;
             overflow-x: hidden;
             background-image:
-                radial-gradient(circle at 15% 50%, rgba(255, 69, 0, 0.03) 0%, transparent 50%),
-                radial-gradient(circle at 85% 30%, rgba(255, 140, 0, 0.03) 0%, transparent 50%);
+                radial-gradient(circle at 15% 50%, rgb(var(--color-primary-rgb) / 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgb(var(--color-secondary-rgb) / 0.03) 0%, transparent 50%);
             background-attachment: fixed;
         }
 
@@ -88,7 +100,7 @@
 
         /* Text Gradients */
         .text-gradient {
-            background: linear-gradient(135deg, #FF4500 0%, #FF8C00 100%);
+            background: linear-gradient(135deg, rgb(var(--color-primary-rgb)) 0%, rgb(var(--color-secondary-rgb)) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -239,6 +251,16 @@
         #reader-floats.ui-hidden {
             transform: translateY(20px);
         }
+
+        /* View Transitions */
+        ::view-transition-old(manga-cover),
+        ::view-transition-new(manga-cover) {
+            animation-duration: 0.5s;
+            animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #d-image {
+            view-transition-name: manga-cover;
+        }
     </style>
 </head>
 
@@ -281,6 +303,8 @@
                         class="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-blue-400 transition-colors">Bookmarks</a>
                     <a href="javascript:navigate('/alt')"
                         class="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-amber-400 transition-colors">Alt</a>
+                    <a href="javascript:navigate('/profile')"
+                        class="text-[10px] font-bold uppercase tracking-widest text-pink-500 hover:text-pink-400 transition-colors">Profile <i class="fas fa-medal ml-1"></i></a>
                 </div>
                 <div class="flex md:hidden items-center">
                     <button onclick="toggleMobileMenu()"
@@ -318,6 +342,8 @@
            class="text-2xl font-black uppercase tracking-[0.2em] font-display hover:text-blue-400 transition-colors">Bookmarks</a>
         <a href="javascript:navigate('/alt'); toggleMobileMenu();" 
            class="text-2xl font-black uppercase tracking-[0.2em] font-display hover:text-amber-400 transition-colors">Alternative</a>
+        <a href="javascript:navigate('/profile'); toggleMobileMenu();" 
+           class="text-2xl font-black uppercase tracking-[0.2em] font-display text-pink-500 hover:text-pink-400 transition-colors">My Profile <i class="fas fa-medal ml-2"></i></a>
            
         <div class="mt-12 flex items-center gap-2 bg-dark-800/80 border border-white/5 px-6 py-3 rounded-full">
             <div class="relative flex h-3 w-3">
@@ -337,6 +363,10 @@
             <h2 id="search-page-title" class="text-2xl md:text-4xl font-black tracking-tight uppercase font-display">
                 Search</h2>
         </div>
+        
+        <!-- Search Filters UI -->
+        <div id="search-filters" class="flex flex-wrap gap-3 md:gap-6 mb-8 animate-fade-in-up"></div>
+
         <div id="search-page-container"
             class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
         </div>
@@ -449,6 +479,20 @@
     </div>
 
     <!-- ============================================
+         PROFILE & STATS VIEW
+    ============================================ -->
+    <div id="profile-view" class="hidden min-h-screen pb-20 pt-24 px-4 md:px-8 max-w-5xl mx-auto">
+        <div class="flex items-center gap-3 mb-10">
+            <div class="w-2 h-8 bg-pink-500 rounded-full shadow-[0_0_15px_rgba(236,72,153,0.5)]"></div>
+            <h2 class="text-2xl md:text-4xl font-black tracking-tight uppercase font-display">
+                Reading <span class="text-pink-500">Stats</span>
+            </h2>
+        </div>
+        <div id="profile-page-container" class="space-y-8 animate-fade-in-up">
+        </div>
+    </div>
+
+    <!-- ============================================
          DETAIL VIEW
     ============================================ -->
     <div id="detail-view" class="hidden min-h-screen relative pb-20">
@@ -516,6 +560,11 @@
          READER VIEW
     ============================================ -->
     <div id="reader-view" class="hidden bg-black z-[100]">
+    
+        <!-- FEATURE: Thin Progress Bar -->
+        <div class="fixed top-0 left-0 w-full h-[2px] bg-dark-800 z-[200]">
+            <div id="r-progress-bar" class="h-full bg-primary" style="width: 0%; box-shadow: 0 0 10px var(--color-primary);"></div>
+        </div>
 
         <!-- FEATURE C: Page Counter (bottom left) -->
         <div id="page-counter"
@@ -682,6 +731,14 @@
 
         readerView.addEventListener('scroll', () => {
             const currentScrollY = readerView.scrollTop;
+            const scrollHeight = readerView.scrollHeight - readerView.clientHeight;
+            
+            // Progress Bar Update
+            if (scrollHeight > 0) {
+                const progress = (currentScrollY / scrollHeight) * 100;
+                document.getElementById('r-progress-bar').style.width = `${progress}%`;
+            }
+
             const readerFloats = document.getElementById('reader-floats');
             const readerFooter = document.getElementById('reader-footer');
 
