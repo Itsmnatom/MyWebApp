@@ -357,10 +357,10 @@ function initKeyboardShortcuts() {
 
         if (isReaderOpen) {
             if (e.key === 'ArrowRight' && readerState.nextPath) {
-                showToast('→ Next Chapter'); setTimeout(() => navigate(readerState.nextPath), 150);
+                showToast('🚀 Next Chapter'); setTimeout(() => navigate(readerState.nextPath, null, true), 150);
             }
             if (e.key === 'ArrowLeft' && readerState.prevPath) {
-                showToast('← Prev Chapter'); setTimeout(() => navigate(readerState.prevPath), 150);
+                showToast('⏮ Prev Chapter'); setTimeout(() => navigate(readerState.prevPath, null, true), 150);
             }
             if (e.key === 'f' || e.key === 'F') { toggleFullscreen(); }
             if (e.key === 's' || e.key === 'S') { toggleReaderSettings(); }
@@ -422,16 +422,14 @@ async function preloadNextChapter(nextUrl) {
 //  ROUTING
 // ══════════════════════════════════════════════════
 
-function navigate(path, clickedEl = null) {
+function navigate(path, clickedEl = null, isReplace = false) {
     const currentPathname = window.location.pathname;
     const newPathname = path.split('?')[0];
 
-    // Save last main path (home/history/bookmarks/alt) for "Back" behavior from Detail view
     if (['/', '/history', '/bookmarks', '/alt', '/search'].includes(currentPathname)) {
         lastMainPath = currentPathname + window.location.search;
     }
 
-    // Clear currentChapters if navigating away from reader or detail view context
     if (newPathname !== '/read' && currentPathname !== '/read' && newPathname !== '/manga' && currentPathname !== '/manga') {
         currentChapters = [];
     }
@@ -440,22 +438,27 @@ function navigate(path, clickedEl = null) {
         applyDynamicTheme(null);
     }
 
+    const performNavigate = () => {
+        if (isReplace) {
+            window.history.replaceState({}, '', path);
+        } else {
+            window.history.pushState({}, '', path);
+        }
+        handleLocation();
+    };
+
     if (document.startViewTransition && clickedEl) {
         const coverImg = clickedEl.tagName === 'IMG' ? clickedEl : clickedEl.querySelector('img');
         if (coverImg && newPathname === '/manga') {
             coverImg.style.viewTransitionName = 'manga-cover';
-            const dImg = document.getElementById('d-image');
-            if (dImg) dImg.src = coverImg.src; // pre-fill for transition target
         }
         
         document.startViewTransition(async () => {
-            window.history.pushState({}, '', path);
-            await handleLocation();
+            performNavigate();
             if (coverImg) coverImg.style.viewTransitionName = '';
         });
     } else {
-        window.history.pushState({}, '', path);
-        handleLocation();
+        performNavigate();
     }
 }
 
@@ -1000,7 +1003,7 @@ async function renderReader(url, title) {
             const t = mangaTitle ? `${mangaTitle} - ${chName || 'Previous Chapter'}` : 'Previous Chapter';
             const prevPath = `/read?url=${encodeURIComponent(decoded)}&title=${encodeURIComponent(t)}${mangaUrlParam}`;
             readerState.prevPath = prevPath;
-            navInlineHtml += `<button onclick="navigate('${prevPath}')"
+            navInlineHtml += `<button onclick="navigate('${prevPath}', null, true)"
                 class="flex-1 glass border border-white/10 hover:border-white/30 px-6 py-4 rounded-3xl text-xs font-bold tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-3">
                 <i class="fas fa-arrow-left opacity-70"></i> Prev Chapter
             </button>`;
@@ -1012,7 +1015,7 @@ async function renderReader(url, title) {
             const t = mangaTitle ? `${mangaTitle} - ${chName || 'Next Chapter'}` : 'Next Chapter';
             const nextPath = `/read?url=${encodeURIComponent(decoded)}&title=${encodeURIComponent(t)}${mangaUrlParam}`;
             readerState.nextPath = nextPath;
-            navInlineHtml += `<button onclick="navigate('${nextPath}')"
+            navInlineHtml += `<button onclick="navigate('${nextPath}', null, true)"
                 class="flex-1 bg-gradient-to-r from-primary to-secondary hover:brightness-110 px-8 py-4 rounded-3xl text-sm md:text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-[0_0_30px_rgba(255,69,0,0.3)] flex items-center justify-center gap-3">
                 Next Chapter <i class="fas fa-arrow-right"></i>
             </button>`;
@@ -1223,10 +1226,16 @@ window.renderProfilePage = function() {
 function exitToDetail() {
     const params = new URLSearchParams(window.location.search);
     const mangaUrl = params.get('mangaUrl');
+    
+    // Smooth reset scroll position before exiting
+    window.scrollTo(0, 0);
+
     if (mangaUrl) {
         navigate(`/manga?url=${encodeURIComponent(mangaUrl)}`);
+    } else if (lastMainPath) {
+        navigate(lastMainPath);
     } else {
-        window.history.back();
+        navigate('/');
     }
 }
 
