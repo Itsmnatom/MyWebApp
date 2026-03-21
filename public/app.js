@@ -474,6 +474,7 @@ async function handleLocation() {
     document.getElementById('main-header').classList.remove('-translate-y-full');
     document.body.style.overflow = 'auto';
     document.documentElement.style.overflow = 'auto';
+    window.scrollTo(0, 0); 
     window.scrollTo({ top: 0, behavior: 'instant' });
     readerState.prevPath = null;
 
@@ -485,7 +486,8 @@ async function handleLocation() {
     if (path === '/read' && targetUrl) {
         document.body.style.overflow = 'hidden';
         document.documentElement.style.overflow = 'hidden';
-        document.getElementById('reader-view').classList.remove('hidden');
+        const rv = document.getElementById('reader-view');
+        if (rv) { rv.classList.remove('hidden'); rv.scrollTop = 0; }
         document.getElementById('main-header').classList.add('-translate-y-full');
         await renderReader(targetUrl, targetTitle || 'Reading...');
     } else if (path === '/search') {
