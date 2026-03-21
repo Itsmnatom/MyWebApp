@@ -246,10 +246,8 @@ function saveScrollProgress(normUrl, scrollTop) {
 function restoreScrollProgress(normUrl) {
     const savedPos = SCROLL_PROGRESS[normUrl];
     if (!savedPos || savedPos < 50) return false;
-    const readerView = document.getElementById('reader-view');
     setTimeout(() => {
-        if (!readerView) return;
-        readerView.scrollTo({ top: savedPos, behavior: 'instant' });
+        window.scrollTo({ top: savedPos, behavior: 'instant' });
         showToast('↩ Resumed from where you left off');
     }, 600); // Increased timeout for heavier mobile pages
     return true;
@@ -1053,20 +1051,20 @@ async function renderReader(url, title) {
 
 function onReaderScroll() {
     const readerView = document.getElementById('reader-view');
-    if (!readerView) return;
+    if (!readerView || readerView.classList.contains('hidden')) return;
+    
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
     
     // Update Progress Bar
     const pbar = document.getElementById('r-progress-bar');
     if (pbar) {
         let p = 0;
-        const sh = readerView.scrollHeight - readerView.clientHeight;
-        if (sh > 0) p = (readerView.scrollTop / sh) * 100;
+        if (scrollHeight > 0) p = (scrollY / scrollHeight) * 100;
         pbar.style.width = `${Math.min(100, Math.max(0, p))}%`;
     }
 
     if (readerState.currentNormUrl) {
-        const scrollY = readerView.scrollTop;
-        const scrollHeight = readerView.scrollHeight - readerView.clientHeight;
         saveScrollProgress(readerState.currentNormUrl, scrollY);
         
         // 0-ms Preloading: Fetch ALL images when 50% scrolled
@@ -1112,12 +1110,10 @@ function handleImageClick(e, isImmersiveTrigger = false) {
         if (el) el.classList.add('ui-hidden');
     });
 
-    if (readerView) {
-        if (y <= h * 0.25) {
-            readerView.scrollBy({ top: -h * 0.8, behavior: 'smooth' });
-        } else {
-            readerView.scrollBy({ top: h * 0.8, behavior: 'smooth' });
-        }
+    if (y <= h * 0.25) {
+        window.scrollBy({ top: -h * 0.8, behavior: 'smooth' });
+    } else {
+        window.scrollBy({ top: h * 0.8, behavior: 'smooth' });
     }
 }
 
@@ -1271,6 +1267,5 @@ window.onload = () => {
     handleLocation();
     initSearch();
     initKeyboardShortcuts();
-    const readerView = document.getElementById('reader-view');
-    if (readerView) readerView.addEventListener('scroll', onReaderScroll, { passive: true });
+    window.addEventListener('scroll', onReaderScroll, { passive: true });
 };
