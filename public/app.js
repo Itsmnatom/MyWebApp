@@ -485,8 +485,8 @@ async function handleLocation() {
     }
 
     if (path === '/read' && targetUrl) {
-        document.body.style.overflow = 'hidden';
-        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'auto';
+        document.documentElement.style.overflow = 'auto';
         const rv = document.getElementById('reader-view');
         if (rv) { rv.classList.remove('hidden'); rv.scrollTop = 0; }
         document.getElementById('main-header').classList.add('-translate-y-full');

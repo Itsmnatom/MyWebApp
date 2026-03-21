@@ -175,16 +175,11 @@
            + image centering
            ============================================= */
         #reader-view {
-            position: fixed !important;
-            top: 0;
-            left: 0;
             width: 100%;
-            height: 100%;
-            overflow-y: auto;
-            overflow-x: hidden;
-            -webkit-overflow-scrolling: touch;
-            /* smooth momentum scroll on iOS */
-            scroll-behavior: smooth;
+            min-height: 100vh;
+            background-color: #000000;
+            z-index: 40;
+            display: block;
         }
 
         /* FIX #2: Images always centered, full-width on mobile */
@@ -707,7 +702,7 @@
     <!-- ============================================
          APP SCRIPT
     ============================================ -->
-    <script src="/app.js?v=4.0.9"></script>
+    <script src="/app.js?v=4.1.0"></script>
     <script>
         // =============================================
         // FIX #1: Reader scroll — listen on the reader
@@ -725,22 +720,25 @@
 
         let lastScrollY = 0;
 
-        readerView.addEventListener('scroll', () => {
-            const currentScrollY = readerView.scrollTop;
-            const scrollHeight = readerView.scrollHeight - readerView.clientHeight;
+        // FIX: Hiding URL Bar on mobile requires scrolling the BODY/WINDOW
+        // So we listen to window scroll instead of a fixed div
+        window.addEventListener('scroll', () => {
+            if (readerView.classList.contains('hidden')) return;
+
+            const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
+            const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
             
             // Progress Bar Update
             if (scrollHeight > 0) {
                 const progress = (currentScrollY / scrollHeight) * 100;
-                document.getElementById('r-progress-bar').style.width = `${progress}%`;
+                const pbar = document.getElementById('r-progress-bar');
+                if (pbar) pbar.style.width = `${progress}%`;
             }
 
             const readerFloats = document.getElementById('reader-floats');
             const readerFooter = document.getElementById('reader-footer');
 
             // Hide UI only when scrolling DOWN beyond a threshold (100px)
-            // NEVER automatically show UI when scrolling (up or down).
-            // This satisfies the requirement "scroll up or down, UI won't show".
             if (currentScrollY > 100 && currentScrollY > lastScrollY) {
                 readerTopbar.classList.add('ui-hidden');
                 readerFloats.classList.add('ui-hidden');
