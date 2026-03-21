@@ -245,12 +245,14 @@ function saveScrollProgress(normUrl, scrollTop) {
 
 function restoreScrollProgress(normUrl) {
     const savedPos = SCROLL_PROGRESS[normUrl];
-    if (!savedPos || savedPos < 50) return;
+    if (!savedPos || savedPos < 50) return false;
     const readerView = document.getElementById('reader-view');
     setTimeout(() => {
+        if (!readerView) return;
         readerView.scrollTo({ top: savedPos, behavior: 'instant' });
         showToast('↩ Resumed from where you left off');
-    }, 400);
+    }, 600); // Increased timeout for heavier mobile pages
+    return true;
 }
 
 function showToast(msg, duration = 2500) {
@@ -1027,11 +1029,13 @@ async function renderReader(url, title) {
         container.innerHTML += navInlineHtml;
 
         // FEATURE B: restore progress
-        restoreScrollProgress(readerState.currentNormUrl);
+        const wasRestored = restoreScrollProgress(readerState.currentNormUrl);
         
-        // RELIABLE RESET: Force reader view to top after all images are in the DOM
-        const rv = document.getElementById('reader-view');
-        if (rv) rv.scrollTop = 0;
+        // RELIABLE RESET: Force reader view to top ONLY if no progress was restored
+        if (!wasRestored) {
+            const rv = document.getElementById('reader-view');
+            if (rv) rv.scrollTop = 0;
+        }
 
     } catch (e) {
         container.innerHTML = `<div class="mt-40 text-center px-4 max-w-md mx-auto animate-fade-in-up">
