@@ -12,7 +12,7 @@
 'use strict';
 
 const API = '/api';
-let lastMainPath = '/';
+let lastMainPath = sessionStorage.getItem('lastMainPath') || '/';
 
 // Register PWA Service Worker
 if ('serviceWorker' in navigator) {
@@ -421,42 +421,11 @@ async function preloadNextChapter(nextUrl) {
 // ══════════════════════════════════════════════════
 
 function navigate(path, clickedEl = null, isReplace = false) {
-    const currentPathname = window.location.pathname;
-    const newPathname = path.split('?')[0];
-
-    if (['/', '/history', '/bookmarks', '/alt', '/search'].includes(currentPathname)) {
-        lastMainPath = currentPathname + window.location.search;
-    }
-
-    if (newPathname !== '/read' && currentPathname !== '/read' && newPathname !== '/manga' && currentPathname !== '/manga') {
-        currentChapters = [];
-    }
-    
-    if (newPathname !== '/read' && newPathname !== '/manga') {
-        applyDynamicTheme(null);
-    }
-
-    const performNavigate = () => {
-        if (isReplace) {
-            window.history.replaceState({}, '', path);
-        } else {
-            window.history.pushState({}, '', path);
-        }
-        handleLocation();
-    };
-
-    if (document.startViewTransition && clickedEl) {
-        const coverImg = clickedEl.tagName === 'IMG' ? clickedEl : clickedEl.querySelector('img');
-        if (coverImg && newPathname === '/manga') {
-            coverImg.style.viewTransitionName = 'manga-cover';
-        }
-        
-        document.startViewTransition(async () => {
-            performNavigate();
-            if (coverImg) coverImg.style.viewTransitionName = '';
-        });
+    // FIX: User requested to use full page refresh instead of buggy SPA scroll management
+    if (isReplace) {
+        window.location.replace(path);
     } else {
-        performNavigate();
+        window.location.assign(path);
     }
 }
 
@@ -485,6 +454,7 @@ async function handleLocation() {
     // Track main browsing paths to avoid backing into Reader from Detail
     if (['/', '/search', '/history', '/bookmarks', '/alt'].includes(path)) {
         lastMainPath = window.location.pathname + window.location.search;
+        sessionStorage.setItem('lastMainPath', lastMainPath);
     }
 
     if (path === '/read' && targetUrl) {
@@ -1227,15 +1197,10 @@ function exitToDetail() {
     const params = new URLSearchParams(window.location.search);
     const mangaUrl = params.get('mangaUrl');
     
-    // Smooth reset scroll position before exiting
-    window.scrollTo(0, 0);
-
     if (mangaUrl) {
         navigate(`/manga?url=${encodeURIComponent(mangaUrl)}`);
-    } else if (lastMainPath) {
-        navigate(lastMainPath);
     } else {
-        navigate('/');
+        window.history.back(); // Native back handles scroll restoration perfectly
     }
 }
 
@@ -1256,7 +1221,7 @@ function toggleMobileMenu() {
 function exitDetail() {
     // If we have a saved browse path, go there. 
     // This prevents going back into the Reader from Detail view.
-    if (lastMainPath) {
+    if (lastMainPath && lastMainPath !== window.location.pathname + window.location.search) {
         navigate(lastMainPath);
     } else {
         navigate('/');
