@@ -447,10 +447,13 @@ app.get('/api/manga/read', async (req, res) => {
         let prevUrl = null;
         let nextUrl = null;
 
-        const mConfig = html.match(/ts_reader\.run\(\s*({[\s\S]+?})\s*\);/);
+        const mConfig = html.match(/readerConfig\s*=\s*({[\s\S]+?});/) || html.match(/ts_reader\.run\(\s*({[\s\S]+?})\s*\);/);
         if (mConfig) {
             try {
-                const config = JSON.parse(mConfig[1]);
+                // If the first regex matched, it's already the JSON blob.
+                // If it was ts_reader.run but with a variable, this might fail, so we're looking for the blob directly.
+                let jsonBlob = mConfig[1];
+                const config = JSON.parse(jsonBlob);
                 if (config.sources?.[0]?.images) imageUrls = config.sources[0].images;
                 if (config.prevUrl) prevUrl = config.prevUrl.replace(/\\\//g, '/');
                 if (config.nextUrl) nextUrl = config.nextUrl.replace(/\\\//g, '/');
@@ -535,6 +538,8 @@ app.get('/api/proxy', async (req, res) => {
         // usually work best with the primary site as referer.
         if (imageUrlLower.includes('imgez.org') || imageUrlLower.includes('speed-manga.net')) {
             referer = 'https://speed-manga.net/';
+        } else if (imageUrlLower.includes('1668manga.com') || imageUrlLower.includes('168toon.com')) {
+            referer = 'https://1668manga.com/';
         }
 
         const response = await got(imageUrl, {
@@ -587,7 +592,7 @@ app.get('/api/alt/read', async (req, res) => {
             }
         });
 
-        // 2. Look for JSON (ts_reader.run pattern) - supporting Base64 obfuscation
+        // 2. Look for JSON (ts_reader.run or readerConfig pattern) - supporting Base64 obfuscation
         if (imageUrls.length === 0) {
             $('script').each((i, el) => {
                 let content = $(el).html() || '';
@@ -599,23 +604,41 @@ app.get('/api/alt/read', async (req, res) => {
                         const parts = srcValue.split('base64,');
                         if (parts[1]) {
                             const decoded = Buffer.from(parts[1], 'base64').toString('utf-8');
-                            if (decoded.includes('ts_reader')) {
+                            if (decoded.includes('ts_reader') || decoded.includes('readerConfig')) {
                                 content = decoded;
                             }
                         }
                     } catch (e) {}
                 }
 
-                if (content.includes('ts_reader.run')) {
-                    const m = content.match(/ts_reader\.run\(([\s\S]+?)\);/);
+                if (content.includes('ts_reader.run') || content.includes('readerConfig')) {
+                    const m = content.match(/readerConfig\s*=\s*({[\s\S]+?});/) 
+                           || content.match(/ts_reader\.run\(([\s\S]+?)\);/);
                     if (m) {
                         try {
                             const data = JSON.parse(m[1]);
                             if (data.sources?.[0]?.images) {
                                 imageUrls = data.sources[0].images;
-                                console.log(`[API:ALT:READ] Method 2 (ts_reader) found ${imageUrls.length} images`);
+                                console.log(`[API:ALT:READ] Method 2 (JSON) found ${imageUrls.length} images`);
                             }
-                        } catch (e) {}
+                        } catch (e) {
+                            // If it matches but isn't JSON, it might be a variable name. 
+                            // Try to look for the variable definition in the same script.
+                            const varName = m[1].trim();
+                            if (/^[a-zA-Z0-9_]+$/.test(varName)) {
+                                const varRegex = new RegExp(`var\\s+${varName}\\s*=\\s*({[\\s\\S]+?});`);
+                                const vm = content.match(varRegex);
+                                if (vm) {
+                                    try {
+                                        const vdata = JSON.parse(vm[1]);
+                                        if (vdata.sources?.[0]?.images) {
+                                            imageUrls = vdata.sources[0].images;
+                                            console.log(`[API:ALT:READ] Method 2.1 (Variable ${varName}) found ${imageUrls.length} images`);
+                                        }
+                                    } catch (ve) {}
+                                }
+                            }
+                        }
                     }
                 }
             });

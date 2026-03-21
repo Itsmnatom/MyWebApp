@@ -370,9 +370,33 @@ app.get('/api/alt/read', async (req, res) => {
         if (imageUrls.length === 0) {
             $('script').each((_, el) => {
                 let content = $(el).html() || '';
-                if (content.includes('ts_reader.run')) {
-                    const m = content.match(/ts_reader\.run\(([\s\S]+?)\);/);
-                    if (m) { try { const d = JSON.parse(m[1]); if (d.sources?.[0]?.images) imageUrls = d.sources[0].images; } catch { } }
+                const srcValue = $(el).attr('src') || '';
+                
+                if (srcValue.includes('base64,')) {
+                    try {
+                        const parts = srcValue.split('base64,');
+                        if (parts[1]) {
+                             const decoded = Buffer.from(parts[1], 'base64').toString('utf-8');
+                             if (decoded.includes('ts_reader') || decoded.includes('readerConfig')) content = decoded;
+                        }
+                    } catch {}
+                }
+
+                if (content.includes('ts_reader.run') || content.includes('readerConfig')) {
+                    const m = content.match(/readerConfig\s*=\s*({[\s\S]+?});/) || content.match(/ts_reader\.run\(([\s\S]+?)\);/);
+                    if (m) { 
+                        try { 
+                            const d = JSON.parse(m[1]); 
+                            if (d.sources?.[0]?.images) imageUrls = d.sources[0].images; 
+                        } catch {
+                            // Variable name check
+                            const varName = m[1].trim();
+                            if (/^[a-zA-Z0-9_]+$/.test(varName)) {
+                                const vm = content.match(new RegExp(`var\\s+${varName}\\s*=\\s*({[\\s\\S]+?});`));
+                                if (vm) { try { const vd = JSON.parse(vm[1]); if (vd.sources?.[0]?.images) imageUrls = vd.sources[0].images; } catch {} }
+                            }
+                        } 
+                    }
                 }
             });
         }

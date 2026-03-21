@@ -242,6 +242,72 @@ function showToast(msg, duration = 2500) {
 // ══════════════════════════════════════════════════
 
 const readerState = { nextPath: null, prevPath: null, currentNormUrl: null, isFullscreen: false };
+let currentChapters = []; // Store chapters for the selector
+
+// FEATURE: Reader Settings Persistence
+let READER_SETTINGS = JSON.parse(localStorage.getItem('sm_reader_settings') || '{"spacing":"normal","width":"standard","brightness":100}');
+
+function saveReaderSettings() { localStorage.setItem('sm_reader_settings', JSON.stringify(READER_SETTINGS)); }
+
+function updateReaderSettingsUI() {
+    const spacingLabel = document.getElementById('label-spacing');
+    const widthLabel = document.getElementById('label-width');
+    if (spacingLabel) spacingLabel.innerText = READER_SETTINGS.spacing.toUpperCase();
+    if (widthLabel) widthLabel.innerText = READER_SETTINGS.width.toUpperCase();
+    
+    document.querySelectorAll('#reader-settings button').forEach(btn => {
+        const attr = btn.getAttribute('onclick') || '';
+        btn.classList.remove('border-primary', 'bg-primary/10', 'text-primary');
+        if (attr.includes(`'${READER_SETTINGS.spacing}'`) || attr.includes(`'${READER_SETTINGS.width}'`)) {
+            btn.classList.add('border-primary', 'bg-primary/10', 'text-primary');
+        }
+    });
+}
+
+function toggleReaderSettings() {
+    const el = document.getElementById('reader-settings');
+    if (el.classList.contains('hidden')) {
+        updateReaderSettingsUI();
+        el.classList.remove('hidden'); el.classList.add('flex');
+        setTimeout(() => el.classList.remove('opacity-0', 'scale-95'), 10);
+    } else {
+        el.classList.add('opacity-0', 'scale-95');
+        setTimeout(() => { el.classList.remove('flex'); el.classList.add('hidden'); }, 300);
+    }
+}
+
+function setReaderSpacing(mode) {
+    const r = document.getElementById('r-images');
+    r.classList.remove('spacing-none', 'spacing-tight', 'spacing-normal');
+    r.classList.add(`spacing-${mode}`);
+    READER_SETTINGS.spacing = mode; saveReaderSettings();
+    updateReaderSettingsUI();
+    showToast(`Spacing: ${mode}`);
+}
+
+function setReaderWidth(mode) {
+    const r = document.getElementById('r-images');
+    r.classList.remove('width-narrow', 'width-standard', 'width-full');
+    r.classList.add(`width-${mode}`);
+    READER_SETTINGS.width = mode; saveReaderSettings();
+    updateReaderSettingsUI();
+    showToast(`Width: ${mode}`);
+}
+
+function setReaderBrightness(val) {
+    document.getElementById('r-images').style.filter = `brightness(${val}%)`;
+    READER_SETTINGS.brightness = val; saveReaderSettings();
+}
+
+function applyPersistedReaderSettings() {
+    try {
+        setReaderSpacing(READER_SETTINGS.spacing);
+        setReaderWidth(READER_SETTINGS.width);
+        setReaderBrightness(READER_SETTINGS.brightness);
+        const range = document.querySelector('#reader-settings input[type="range"]');
+        if (range) range.value = READER_SETTINGS.brightness;
+    } catch (e) { console.warn('Reader settings apply failed:', e); }
+}
 
 // ══════════════════════════════════════════════════
 //  FEATURE E: KEYBOARD SHORTCUTS
@@ -260,7 +326,8 @@ function initKeyboardShortcuts() {
             if (e.key === 'ArrowLeft' && readerState.prevPath) {
                 showToast('← Prev Chapter'); setTimeout(() => navigate(readerState.prevPath), 150);
             }
-            if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+            if (e.key === 'f' || e.key === 'F') { toggleFullscreen(); }
+            if (e.key === 's' || e.key === 'S') { toggleReaderSettings(); }
             if (e.key === 'Escape') {
                 if (document.fullscreenElement) document.exitFullscreen();
                 else window.history.back();
@@ -320,6 +387,19 @@ async function preloadNextChapter(nextUrl) {
 // ══════════════════════════════════════════════════
 
 function navigate(path) {
+    const currentPathname = window.location.pathname;
+    const newPathname = path.split('?')[0];
+
+    // Save last main path (home/history/bookmarks/alt) for "Back" behavior from Detail view
+    if (['/', '/history', '/bookmarks', '/alt'].includes(currentPathname)) {
+        lastMainPath = currentPathname;
+    }
+
+    // Clear currentChapters if navigating away from reader or detail view context
+    if (newPathname !== '/read' && currentPathname !== '/read' && newPathname !== '/manga' && currentPathname !== '/manga') {
+        currentChapters = [];
+    }
+
     window.history.pushState({}, '', path);
     handleLocation();
 }
@@ -622,6 +702,9 @@ async function renderDetail(url) {
         const d = await res.json();
         if (d.error) throw new Error(d.error);
 
+        // Populate Chapter Selector
+        currentChapters = d.chapters || []; // Update global list for reader selector
+
         document.getElementById('d-title').innerText = d.title || 'Unknown Classified';
         document.getElementById('d-synopsis').innerText = d.synopsis || 'No synopsis data recovered.';
         const proxifiedImg = proxify(d.image);
@@ -722,17 +805,13 @@ async function renderReader(url, title) {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
-        if (data.images?.length > 0) {
-            const params = new URLSearchParams(window.location.search);
-            const mangaUrl = params.get('mangaUrl');
-            const rawTitle = params.get('title') || title;
-            const dashIdx = rawTitle.indexOf(' - ');
-            const mangaTitle = dashIdx > -1 ? rawTitle.substring(0, dashIdx) : rawTitle;
-            const chapterName = dashIdx > -1 ? rawTitle.substring(dashIdx + 3) : 'Chapter';
-            if (mangaUrl) {
-                addToHistory({ title: mangaTitle, url: mangaUrl, image: data.images[0] }, { name: chapterName, url: normalizeChapterUrl(url) });
-            }
-        }
+        // Standardize Title Info
+        const params = new URLSearchParams(window.location.search);
+        const mangaUrl = params.get('mangaUrl');
+        const rawTitle = params.get('title') || title;
+        const dashIdx = rawTitle.indexOf(' - ');
+        const mangaTitle = dashIdx > -1 ? rawTitle.substring(0, dashIdx) : rawTitle;
+        const chapterName = dashIdx > -1 ? rawTitle.substring(dashIdx + 3) : 'Chapter';
 
         if (!data.images?.length) {
             container.innerHTML = `<div class="mt-40 text-center px-4 animate-fade-in-up">
@@ -740,30 +819,44 @@ async function renderReader(url, title) {
                     <i class="fas fa-image-slash text-4xl text-gray-600"></i>
                 </div>
                 <h3 class="text-white font-black font-display text-xl mb-2">PAGES CLASSIFIED</h3>
-                <p class="text-xs text-gray-500 max-w-sm mx-auto">Source materials could not be extracted.</p>
+                <p class="text-xs text-gray-500 max-w-sm mx-auto">Source materials could not be extracted (possible 403 or 404).</p>
                 <button onclick="renderReader('${url.replace(/'/g, "\\'")}${url.includes('?') ? '&' : '?'}nocache=1','${title.replace(/'/g, "\\'")}' )"
                     class="mt-8 bg-white/5 hover:bg-primary border border-white/10 px-8 py-3 rounded-2xl text-[10px] uppercase font-black tracking-widest transition-all">Attempt Bypass</button>
             </div>`;
             return;
         }
+        if (mangaUrl) {
+            addToHistory({ title: mangaTitle, url: mangaUrl, image: data.images[0] }, { name: chapterName, url: normalizeChapterUrl(url) });
+        }
 
-        container.innerHTML = data.images.map((src, i) => `
+        container.innerHTML = `
+            <div onclick="handleImageClick(event, true)" class="w-full h-16 flex items-center justify-center text-[9px] font-black tracking-[0.8em] text-white/5 uppercase hover:text-white/20 transition-all border-b border-white/5 cursor-pointer">
+                <i class="fas fa-eye-slash mr-4"></i> Immersive Mode <i class="fas fa-eye-slash ml-4"></i>
+            </div>
+        ` + data.images.map((src, i) => `
             <img src="${proxify(src)}"
-                class="w-full block transition-opacity duration-500 opacity-0 cursor-pointer"
+                class="w-full block transition-opacity duration-300 opacity-0 cursor-pointer"
                 onclick="handleImageClick(event)"
                 onload="this.classList.remove('opacity-0')"
                 loading="${i < 4 ? 'eager' : 'lazy'}"
                 onerror="this.style.display='none'">`).join('');
 
+        // Apply reader settings and populate selector
+        applyPersistedReaderSettings();
+        const selector = document.getElementById('chapter-selector');
+        if (selector && currentChapters.length > 0) {
+            selector.innerHTML = currentChapters.map(ch => {
+                const isAltCh = url.includes('1668manga.com') || isAlt;
+                const path = `/read?url=${encodeURIComponent(ch.url)}&mangaUrl=${encodeURIComponent(mangaUrl)}&title=${encodeURIComponent(`${mangaTitle} - ${clean(ch.name)}`)}${isAltCh ? '&alt=1' : ''}`;
+                const isSelected = normalizeChapterUrl(ch.url) === readerState.currentNormUrl;
+                return `<option value="${path}" ${isSelected ? 'selected' : ''}>${clean(ch.name)}</option>`;
+            }).join('');
+        }
+
         // FEATURE C: init page counter
         if (counter) { counter.textContent = `1 / ${data.images.length}`; counter.classList.remove('hidden'); }
 
         // Build nav
-        const params = new URLSearchParams(window.location.search);
-        const mangaUrl = params.get('mangaUrl');
-        const rawTitle = params.get('title') || title;
-        const dashIdx = rawTitle.indexOf(' - ');
-        const mangaTitle = dashIdx > -1 ? rawTitle.substring(0, dashIdx) : rawTitle;
         const mangaUrlParam = mangaUrl ? `&mangaUrl=${encodeURIComponent(mangaUrl)}` : '';
 
         if (data.prevUrl) {
@@ -833,8 +926,30 @@ function onReaderScroll() {
 //  GLOBAL HANDLERS
 // ══════════════════════════════════════════════════
 
-function handleImageClick(e) {
-    document.querySelectorAll('#reader-topbar, #reader-floats, #reader-footer').forEach(el => el.classList.toggle('ui-hidden'));
+function handleImageClick(e, skipScroll = false) {
+    // 1. Toggle UI Visibility
+    const top = document.getElementById('reader-topbar');
+    const floats = document.getElementById('reader-floats');
+    const footer = document.getElementById('reader-footer');
+    
+    [top, floats, footer].forEach(el => {
+        if (el) el.classList.toggle('ui-hidden');
+    });
+
+    // 2. Scroll if it's an image click (not a trigger area click)
+    if (!skipScroll) {
+        const readerView = document.getElementById('reader-view');
+        if (readerView) {
+            // Scroll by 80% of viewport height
+            readerView.scrollBy({ top: window.innerHeight * 0.8, behavior: 'smooth' });
+        }
+    }
+    
+    // Closer settings if open
+    const settings = document.getElementById('reader-settings');
+    if (settings && !settings.classList.contains('hidden')) {
+        toggleReaderSettings();
+    }
 }
 
 function exitToDetail() {
