@@ -942,12 +942,14 @@ async function renderReader(url, title) {
 
         container.innerHTML = data.images.map((src, i) => `
             <img src="${proxify(src)}"
-                class="w-full block transition-opacity duration-300 opacity-0 cursor-pointer"
-                onclick="handleImageClick(event)"
+                class="w-full block mb-10 md:mb-12 transition-opacity duration-300 opacity-0 cursor-pointer"
                 ondblclick="toggleImageZoom(this)"
                 onload="this.classList.remove('opacity-0')"
                 loading="${i < 4 ? 'eager' : 'lazy'}"
                 onerror="this.style.display='none'">`).join('');
+        
+        container.classList.add('cursor-pointer');
+        container.onclick = (e) => handleImageClick(e);
                 
         readerState.nextChapterPreloaded = false;
 
@@ -1091,8 +1093,8 @@ function handleImageClick(e, isImmersiveTrigger = false) {
     const y = e.clientY;
     const h = window.innerHeight;
 
-    // TAP ZONES: Top 15% or Bottom 15% of screen = TOGGLE UI (Don't scroll)
-    if (y <= h * 0.15 || y >= h * 0.85 || isImmersiveTrigger) {
+    // TAP ZONES: Top 20% or Bottom 20% of screen = TOGGLE UI (Don't scroll)
+    if (y <= h * 0.20 || y >= h * 0.80 || isImmersiveTrigger) {
         [top, floats, pbar].forEach(el => {
             if (el) el.classList.toggle('ui-hidden');
         });
@@ -1159,18 +1161,18 @@ window.renderProfilePage = function() {
     container.innerHTML = `
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Badge Card -->
-            <div class="lg:col-span-2 glass-card rounded-[2.5rem] p-10 flex flex-col md:flex-row items-center gap-10 border-t border-white/10 shadow-2xl relative overflow-hidden group">
+            <div class="lg:col-span-2 glass-card rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 flex flex-col md:flex-row items-center gap-6 md:gap-10 border-t border-white/10 shadow-2xl relative overflow-hidden group">
                 <div class="absolute inset-0 bg-gradient-to-br ${badge.color} opacity-[0.03]"></div>
                 
-                <div class="relative w-40 h-40 md:w-48 md:h-48 rounded-full border-4 border-white/5 bg-dark-900 flex items-center justify-center shadow-2xl overflow-hidden group-hover:scale-105 transition-transform duration-500">
+                <div class="relative w-32 h-32 md:w-48 md:h-48 rounded-full border-4 border-white/5 bg-dark-900 flex items-center justify-center shadow-2xl overflow-hidden group-hover:scale-105 transition-transform duration-500 flex-shrink-0">
                     <div class="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent"></div>
                     <i class="fas ${badge.icon} text-7xl text-transparent bg-clip-text bg-gradient-to-br ${badge.color} animate-pulse-slow"></i>
                 </div>
                 
-                <div class="flex-1 text-center md:text-left space-y-4">
-                    <div class="inline-block px-4 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-gray-400">Current Rank</div>
-                    <h3 class="text-4xl md:text-5xl font-black font-display uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-br ${badge.color}">${badge.title}</h3>
-                    <p class="text-sm text-gray-400 font-medium">"${badge.desc}"</p>
+                <div class="flex-1 text-center md:text-left space-y-3 md:space-y-4">
+                    <div class="inline-block px-4 py-1 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest text-gray-400">Current Rank</div>
+                    <h3 class="text-3xl md:text-5xl font-black font-display uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-br ${badge.color}">${badge.title}</h3>
+                    <p class="text-xs md:text-sm text-gray-400 font-medium">"${badge.desc}"</p>
                     
                     <div class="pt-6 space-y-3">
                         <div class="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
