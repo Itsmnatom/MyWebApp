@@ -487,8 +487,7 @@ async function handleLocation() {
     if (path === '/read' && targetUrl) {
         document.body.style.overflow = 'auto';
         document.documentElement.style.overflow = 'auto';
-        const rv = document.getElementById('reader-view');
-        if (rv) { rv.classList.remove('hidden'); rv.scrollTop = 0; }
+        document.getElementById('reader-view').classList.remove('hidden');
         document.getElementById('main-header').classList.add('-translate-y-full');
         await renderReader(targetUrl, targetTitle || 'Reading...');
     } else if (path === '/search') {
@@ -523,13 +522,6 @@ async function handleLocation() {
             if (cachedHome) { try { displayHome(JSON.parse(cachedHome), 1, true); } catch (e) { } }
         }
         await renderHome(page);
-    }
-    
-    // RELIABLE RESET: Jump to top after content is likely rendered
-    if (path !== '/read') {
-        window.scrollTo(0, 0);
-        document.body.scrollTop = 0;
-        document.documentElement.scrollTop = 0;
     }
 }
 
@@ -1029,13 +1021,7 @@ async function renderReader(url, title) {
         container.innerHTML += navInlineHtml;
 
         // FEATURE B: restore progress
-        const wasRestored = restoreScrollProgress(readerState.currentNormUrl);
-        
-        // RELIABLE RESET: Force reader view to top ONLY if no progress was restored
-        if (!wasRestored) {
-            const rv = document.getElementById('reader-view');
-            if (rv) rv.scrollTop = 0;
-        }
+        restoreScrollProgress(readerState.currentNormUrl);
 
     } catch (e) {
         container.innerHTML = `<div class="mt-40 text-center px-4 max-w-md mx-auto animate-fade-in-up">
