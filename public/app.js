@@ -955,33 +955,46 @@ async function renderReader(url, title) {
             addToHistory({ title: mangaTitle, url: mangaUrl, image: data.images[0] }, { name: chapterName, url: normalizeChapterUrl(url) });
         }
 
-        container.innerHTML = `
-            <div onclick="handleImageClick(event, true)" class="w-full h-16 flex items-center justify-center text-[9px] font-black tracking-[0.8em] text-white/5 uppercase hover:text-white/20 transition-all border-b border-white/5 cursor-pointer">
-                <i class="fas fa-eye-slash mr-4"></i> Immersive Mode <i class="fas fa-eye-slash ml-4"></i>
-            </div>
-        ` + data.images.map((src, i) => `
+        container.innerHTML = data.images.map((src, i) => `
             <img src="${proxify(src)}"
                 class="w-full block transition-opacity duration-300 opacity-0 cursor-pointer"
                 onclick="handleImageClick(event)"
                 ondblclick="toggleImageZoom(this)"
                 onload="this.classList.remove('opacity-0')"
                 loading="${i < 4 ? 'eager' : 'lazy'}"
-                onerror="this.style.display='none'">`).join('') + `
-            <!-- Bottom Immersive Trigger -->
-            <div onclick="handleImageClick(event, true)" class="w-full h-20 mb-12 flex items-center justify-center text-[9px] font-black tracking-[0.8em] text-white/5 uppercase hover:text-white/20 transition-all border-y border-white/5 cursor-pointer">
-                <i class="fas fa-eye-slash mr-4"></i> Toggle UI <i class="fas fa-eye-slash ml-4"></i>
-            </div>`;
+                onerror="this.style.display='none'">`).join('');
+                
+        readerState.nextChapterPreloaded = false;
 
         // Apply reader settings and populate selector
         applyPersistedReaderSettings();
         const selector = document.getElementById('chapter-selector');
-        if (selector && currentChapters.length > 0) {
-            selector.innerHTML = currentChapters.map(ch => {
-                const isAltCh = url.includes('1668manga.com') || isAlt;
-                const path = `/read?url=${encodeURIComponent(ch.url)}&mangaUrl=${encodeURIComponent(mangaUrl)}&title=${encodeURIComponent(`${mangaTitle} - ${clean(ch.name)}`)}${isAltCh ? '&alt=1' : ''}`;
-                const isSelected = normalizeChapterUrl(ch.url) === readerState.currentNormUrl;
-                return `<option value="${path}" ${isSelected ? 'selected' : ''}>${clean(ch.name)}</option>`;
-            }).join('');
+        const populateSelector = () => {
+            if (selector && currentChapters.length > 0) {
+                selector.innerHTML = currentChapters.map(ch => {
+                    const isAltCh = url.includes('1668manga.com') || isAlt;
+                    const path = `/read?url=${encodeURIComponent(ch.url)}&mangaUrl=${encodeURIComponent(mangaUrl)}&title=${encodeURIComponent(`${mangaTitle} - ${clean(ch.name)}`)}${isAltCh ? '&alt=1' : ''}`;
+                    const isSelected = normalizeChapterUrl(ch.url) === readerState.currentNormUrl;
+                    return `<option class="bg-gray-900 text-white" value="${path}" ${isSelected ? 'selected' : ''}>${clean(ch.name)}</option>`;
+                }).join('');
+            }
+        };
+
+        if (currentChapters.length > 0) {
+            populateSelector();
+        } else if (mangaUrl && selector) {
+            // Fetch silently if loaded directly
+            const fetchUrl = isAlt ? `${API}/alt/manga?url=${encodeURIComponent(mangaUrl)}` : `${API}/manga/details?url=${encodeURIComponent(mangaUrl)}`;
+            fetch(fetchUrl).then(r => r.json()).then(d => {
+                if (d.chapters?.length) {
+                    currentChapters = d.chapters;
+                    populateSelector();
+                } else {
+                    selector.innerHTML = '<option class="bg-gray-900 text-white">No Chapters</option>';
+                }
+            }).catch(() => {
+                selector.innerHTML = '<option class="bg-gray-900 text-red-500">Error Loading</option>';
+            });
         }
 
         // FEATURE C: init page counter
@@ -989,6 +1002,7 @@ async function renderReader(url, title) {
 
         // Build nav
         const mangaUrlParam = mangaUrl ? `&mangaUrl=${encodeURIComponent(mangaUrl)}` : '';
+        let navInlineHtml = '<div class="w-full max-w-2xl mx-auto flex flex-col md:flex-row justify-between gap-4 mt-8 mb-20 px-4">';
 
         if (data.prevUrl) {
             const decoded = decodeURIComponent(data.prevUrl).split('?')[0];
@@ -996,8 +1010,8 @@ async function renderReader(url, title) {
             const t = mangaTitle ? `${mangaTitle} - ${chName || 'Previous Chapter'}` : 'Previous Chapter';
             const prevPath = `/read?url=${encodeURIComponent(decoded)}&title=${encodeURIComponent(t)}${mangaUrlParam}`;
             readerState.prevPath = prevPath;
-            navBottom.innerHTML += `<button onclick="navigate('${prevPath}')"
-                class="glass hover:bg-white/10 px-6 py-3.5 rounded-2xl text-xs font-bold tracking-widest uppercase transition-all duration-300 hover:-translate-x-1 flex items-center gap-3">
+            navInlineHtml += `<button onclick="navigate('${prevPath}')"
+                class="flex-1 glass border border-white/10 hover:border-white/30 px-6 py-4 rounded-3xl text-xs font-bold tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-3">
                 <i class="fas fa-arrow-left opacity-70"></i> Prev Chapter
             </button>`;
         }
@@ -1008,15 +1022,13 @@ async function renderReader(url, title) {
             const t = mangaTitle ? `${mangaTitle} - ${chName || 'Next Chapter'}` : 'Next Chapter';
             const nextPath = `/read?url=${encodeURIComponent(decoded)}&title=${encodeURIComponent(t)}${mangaUrlParam}`;
             readerState.nextPath = nextPath;
-            navBottom.innerHTML += `<button onclick="navigate('${nextPath}')"
-                class="bg-gradient-to-r from-primary to-secondary hover:brightness-110 px-8 py-3.5 rounded-2xl text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-[0_0_20px_rgba(255,69,0,0.3)] hover:-translate-y-1 flex items-center gap-3">
+            navInlineHtml += `<button onclick="navigate('${nextPath}')"
+                class="flex-1 bg-gradient-to-r from-primary to-secondary hover:brightness-110 px-8 py-4 rounded-3xl text-sm md:text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-[0_0_30px_rgba(255,69,0,0.3)] flex items-center justify-center gap-3">
                 Next Chapter <i class="fas fa-arrow-right"></i>
             </button>`;
-            floatNext.classList.remove('hidden');
-            floatNext.onclick = () => navigate(nextPath);
-            // FEATURE D: preload next chapter silently
-            setTimeout(() => preloadNextChapter(data.nextUrl), 2000);
         }
+        navInlineHtml += '</div>';
+        container.innerHTML += navInlineHtml;
 
         // FEATURE B: restore progress
         restoreScrollProgress(readerState.currentNormUrl);
@@ -1048,8 +1060,20 @@ async function renderReader(url, title) {
 
 function onReaderScroll() {
     updatePageCounter();
-    if (readerState.currentNormUrl) {
-        saveScrollProgress(readerState.currentNormUrl, document.getElementById('reader-view').scrollTop);
+    const readerView = document.getElementById('reader-view');
+    if (readerState.currentNormUrl && readerView) {
+        const scrollY = readerView.scrollTop;
+        const scrollHeight = readerView.scrollHeight - readerView.clientHeight;
+        saveScrollProgress(readerState.currentNormUrl, scrollY);
+        
+        // 0-ms Preloading: Fetch ALL images when 50% scrolled
+        if (scrollHeight > 0 && !readerState.nextChapterPreloaded && readerState.nextPath) {
+            if ((scrollY / scrollHeight) >= 0.5) {
+                readerState.nextChapterPreloaded = true;
+                const urlMatch = readerState.nextPath.match(/url=([^&]+)/);
+                if (urlMatch) preloadNextChapter(decodeURIComponent(urlMatch[1]));
+            }
+        }
     }
 }
 
