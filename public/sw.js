@@ -1,9 +1,9 @@
-const CACHE_NAME = 'speedmanga-v4';
+const CACHE_NAME = 'speedmanga-v6';
 const ASSETS = [
   '/',
   '/index.html',
   '/style.css',
-  '/app.js',
+  '/app.js?v=4.0.2',
   'https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&family=Outfit:wght@700;900&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
 ];

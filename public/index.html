@@ -562,14 +562,8 @@
     <div id="reader-view" class="hidden bg-black z-[100]">
     
         <!-- FEATURE: Thin Progress Bar -->
-        <div class="fixed top-0 left-0 w-full h-[3px] bg-dark-800 z-[200]">
-            <div id="r-progress-bar" class="h-full bg-[#FF7300]" style="width: 0%;"></div>
-        </div>
-
-        <!-- FEATURE C: Page Counter (bottom left) -->
-        <div id="page-counter"
-            class="hidden fixed bottom-6 left-6 z-[110] bg-[#333333]/90 border border-white/5 px-4 py-2 rounded-[20px] text-[11px] font-black text-white tracking-[0.2em] pointer-events-none tabular-nums shadow-lg">
-            1 / ?
+        <div class="fixed top-0 left-0 w-full h-1 bg-dark-800 z-[200]">
+            <div id="r-progress-bar" class="h-full bg-gradient-to-r from-primary to-amber-500 shadow-[0_0_15px_rgba(255,115,0,0.6)]" style="width: 0%;"></div>
         </div>
 
         <!-- Float Controls (bottom right) -->
@@ -693,7 +687,7 @@
         </div>
 
         <!-- Images Container -->
-        <div id="r-images" class="block w-full min-h-screen reader-image-container pt-0 pb-4">
+        <div id="r-images" class="block w-full min-h-screen reader-image-container pt-16 pb-40">
         </div>
 
         <!-- Next/Prev Footer -->
@@ -713,7 +707,7 @@
     <!-- ============================================
          APP SCRIPT
     ============================================ -->
-    <script src="/app.js?v=4.0.1"></script>
+    <script src="/app.js?v=4.0.3"></script>
     <script>
         // =============================================
         // FIX #1: Reader scroll — listen on the reader
@@ -744,15 +738,15 @@
             const readerFloats = document.getElementById('reader-floats');
             const readerFooter = document.getElementById('reader-footer');
 
+            // Hide UI only when scrolling DOWN beyond a threshold (100px)
+            // NEVER automatically show UI when scrolling (up or down).
+            // This satisfies the requirement "scroll up or down, UI won't show".
             if (currentScrollY > 100 && currentScrollY > lastScrollY) {
                 readerTopbar.classList.add('ui-hidden');
                 readerFloats.classList.add('ui-hidden');
                 if (readerFooter) readerFooter.classList.add('ui-hidden');
-            } else if (currentScrollY < lastScrollY) {
-                readerTopbar.classList.remove('ui-hidden');
-                readerFloats.classList.remove('ui-hidden');
-                if (readerFooter) readerFooter.classList.remove('ui-hidden');
             }
+            
             lastScrollY = currentScrollY;
         }, { passive: true });
     </script>

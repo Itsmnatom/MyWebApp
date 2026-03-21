@@ -227,22 +227,8 @@ async function doSearch(q) {
     }
 }
 
-// ══════════════════════════════════════════════════
-//  FEATURE C: PAGE COUNTER
-// ══════════════════════════════════════════════════
-
-function updatePageCounter() {
-    const counter = document.getElementById('page-counter');
-    if (!counter) return;
-    const readerView = document.getElementById('reader-view');
-    const imgs = readerView.querySelectorAll('#r-images img');
-    if (!imgs.length) { counter.classList.add('hidden'); return; }
-    const viewportMid = readerView.scrollTop + readerView.clientHeight / 2;
-    let currentPage = 1;
-    imgs.forEach((img, i) => { if (img.offsetTop <= viewportMid) currentPage = i + 1; });
-    counter.textContent = `${currentPage} / ${imgs.length}`;
-    counter.classList.remove('hidden');
-}
+// REMOVED PAGE COUNTER FEATURE AS REQUESTED BY USER
+// (Function updatePageCounter was here)
 
 // ══════════════════════════════════════════════════
 //  FEATURE B: READING PROGRESS
@@ -518,6 +504,10 @@ async function handleLocation() {
         const aView = document.getElementById('alt-view');
         if (aView) { aView.classList.remove('hidden'); aView.classList.add('animate-fade-in-up'); }
         renderAltPage();
+    } else if (path === '/profile') {
+        const pView = document.getElementById('profile-view');
+        if (pView) { pView.classList.remove('hidden'); pView.classList.add('animate-fade-in-up'); }
+        if (typeof renderProfilePage === 'function') renderProfilePage();
     } else if (path === '/manga' && targetUrl) {
         const dView = document.getElementById('detail-view');
         dView.classList.remove('hidden'); dView.classList.add('animate-fade-in-up');
@@ -900,14 +890,11 @@ async function renderReader(url, title) {
     const container = document.getElementById('r-images');
     const navBottom = document.getElementById('reader-nav-bottom');
     const floatNext = document.getElementById('float-next-btn');
-    const counter = document.getElementById('page-counter');
 
-    navBottom.innerHTML = '';
     if (floatNext) floatNext.classList.add('hidden');
-    if (counter) counter.classList.add('hidden');
     readerState.currentNormUrl = normalizeChapterUrl(url);
 
-    container.innerHTML = `<div class="flex flex-col items-center justify-center pt-[30vh] pb-40 opacity-60 animate-fade-in-up">
+    container.innerHTML = `<div class="flex flex-col items-center justify-center pt-[30vh] pb-[30vh] opacity-60 animate-fade-in-up">
         <div class="w-32 h-[2px] bg-dark-800 rounded-full overflow-hidden shadow-[0_0_10px_rgba(255,69,0,0.2)]">
             <div class="h-full bg-primary w-[30%] rounded-full shadow-[0_0_15px_rgba(255,69,0,1)]" style="animation: bounce-slide 1.5s infinite ease-in-out;"></div>
         </div>
@@ -995,8 +982,8 @@ async function renderReader(url, title) {
             });
         }
 
-        // FEATURE C: init page counter
-        if (counter) { counter.textContent = `1 / ${data.images.length}`; counter.classList.remove('hidden'); }
+        // FEATURE C: Removed page counter as requested by user.
+        // Reading progress is now shown alone via the progress bar.
 
         // Build nav
         const mangaUrlParam = mangaUrl ? `&mangaUrl=${encodeURIComponent(mangaUrl)}` : '';
@@ -1057,9 +1044,19 @@ async function renderReader(url, title) {
 // ══════════════════════════════════════════════════
 
 function onReaderScroll() {
-    updatePageCounter();
     const readerView = document.getElementById('reader-view');
-    if (readerState.currentNormUrl && readerView) {
+    if (!readerView) return;
+    
+    // Update Progress Bar
+    const pbar = document.getElementById('r-progress-bar');
+    if (pbar) {
+        let p = 0;
+        const sh = readerView.scrollHeight - readerView.clientHeight;
+        if (sh > 0) p = (readerView.scrollTop / sh) * 100;
+        pbar.style.width = `${Math.min(100, Math.max(0, p))}%`;
+    }
+
+    if (readerState.currentNormUrl) {
         const scrollY = readerView.scrollTop;
         const scrollHeight = readerView.scrollHeight - readerView.clientHeight;
         saveScrollProgress(readerState.currentNormUrl, scrollY);
@@ -1091,22 +1088,22 @@ function handleImageClick(e, isImmersiveTrigger = false) {
         toggleReaderSettings();
     }
 
-    if (isImmersiveTrigger) {
-        // Toggle Zones (บนสุด / ล่างสุด): เปิด/ปิดเมนู UI โดยไม่เลื่อนจอ
+    const y = e.clientY;
+    const h = window.innerHeight;
+
+    // TAP ZONES: Top 15% or Bottom 15% of screen = TOGGLE UI (Don't scroll)
+    if (y <= h * 0.15 || y >= h * 0.85 || isImmersiveTrigger) {
         [top, floats, pbar].forEach(el => {
             if (el) el.classList.toggle('ui-hidden');
         });
         return;
     }
 
-    // Click-to-Scroll (แตะรูปภาพมังงะ): ซ่อนเมนู (UI)
+    // MIDDLE ZONE: Hide UI and Scroll
     [top, floats, pbar].forEach(el => {
         if (el) el.classList.add('ui-hidden');
     });
 
-    // เลื่อนหน้าจอลงให้อัตโนมัติ (ประมาณ 80%)
-    const y = e.clientY;
-    const h = window.innerHeight;
     if (readerView) {
         if (y <= h * 0.25) {
             readerView.scrollBy({ top: -h * 0.8, behavior: 'smooth' });
@@ -1143,44 +1140,77 @@ window.renderProfilePage = function() {
     const total = stats.totalRead || 0;
     const week = stats.weekRead || 0;
     
-    let badge = { title: 'Novice', icon: 'fa-seedling', desc: 'Read your first chapters', color: 'text-green-500' };
-    if (total >= 1000) badge = { title: 'เซียนมังงะ (Manga Master)', icon: 'fa-crown', desc: 'Read 1,000+ Chapters', color: 'text-amber-400' };
-    else if (total >= 500) badge = { title: 'Otaku', icon: 'fa-dragon', desc: 'Read 500+ Chapters', color: 'text-pink-500' };
-    else if (total >= 100) badge = { title: 'Bookworm', icon: 'fa-book-open', desc: 'Read 100+ Chapters', color: 'text-blue-400' };
+    let badge = { title: 'Novice (นักอ่านฝึกหัด)', icon: 'fa-seedling', desc: 'Read your first chapters', color: 'from-green-500 to-emerald-700' };
+    let nextThreshold = 100;
+    
+    if (total >= 1000) {
+        badge = { title: 'Manga Master (เซียนมังงะ)', icon: 'fa-crown', desc: 'The Archive Legend', color: 'from-amber-400 to-orange-600' };
+        nextThreshold = total;
+    } else if (total >= 500) {
+        badge = { title: 'Otaku (ผู้คลั่งไคล้)', icon: 'fa-dragon', desc: 'Read 500+ Chapters', color: 'from-pink-500 to-rose-700' };
+        nextThreshold = 1000;
+    } else if (total >= 100) {
+        badge = { title: 'Bookworm (หนอนหนังสือ)', icon: 'fa-book-open', desc: 'Read 100+ Chapters', color: 'from-blue-400 to-indigo-600' };
+        nextThreshold = 500;
+    }
+
+    const progressPercent = Math.min(100, (total / nextThreshold) * 100);
 
     container.innerHTML = `
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Badge Card -->
-            <div class="glass-card rounded-3xl p-8 flex flex-col items-center justify-center text-center border-t border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-                <div class="w-32 h-32 rounded-full border-4 border-white/5 bg-dark-800 flex items-center justify-center mb-6 shadow-xl relative overflow-hidden group">
-                    <div class="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent"></div>
-                    <i class="fas ${badge.icon} ${badge.color} text-6xl group-hover:scale-125 transition-transform duration-500"></i>
+            <div class="lg:col-span-2 glass-card rounded-[2.5rem] p-10 flex flex-col md:flex-row items-center gap-10 border-t border-white/10 shadow-2xl relative overflow-hidden group">
+                <div class="absolute inset-0 bg-gradient-to-br ${badge.color} opacity-[0.03]"></div>
+                
+                <div class="relative w-40 h-40 md:w-48 md:h-48 rounded-full border-4 border-white/5 bg-dark-900 flex items-center justify-center shadow-2xl overflow-hidden group-hover:scale-105 transition-transform duration-500">
+                    <div class="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent"></div>
+                    <i class="fas ${badge.icon} text-7xl text-transparent bg-clip-text bg-gradient-to-br ${badge.color} animate-pulse-slow"></i>
                 </div>
-                <h3 class="text-3xl font-black font-display uppercase tracking-widest ${badge.color}">${badge.title}</h3>
-                <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mt-2">${badge.desc}</p>
+                
+                <div class="flex-1 text-center md:text-left space-y-4">
+                    <div class="inline-block px-4 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-gray-400">Current Rank</div>
+                    <h3 class="text-4xl md:text-5xl font-black font-display uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-br ${badge.color}">${badge.title}</h3>
+                    <p class="text-sm text-gray-400 font-medium">"${badge.desc}"</p>
+                    
+                    <div class="pt-6 space-y-3">
+                        <div class="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                            <span class="text-gray-500">Rank Progress</span>
+                            <span class="text-white">${total} / ${nextThreshold}</span>
+                        </div>
+                        <div class="h-2 w-full bg-white/5 rounded-full overflow-hidden shadow-inner">
+                            <div class="h-full bg-gradient-to-r ${badge.color} rounded-full" style="width: ${progressPercent}%"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <!-- Stats Column -->
             <div class="space-y-6">
-                <div class="glass-card rounded-3xl p-6 border-l border-white/5 flex items-center justify-between">
-                    <div>
-                        <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Chapters Read (All Time)</p>
-                        <h4 class="text-4xl font-black font-display text-white">${total.toLocaleString()}</h4>
+                <div class="glass-card rounded-[2rem] p-8 border-l-4 border-primary transition-all hover:translate-x-1">
+                    <div class="flex justify-between items-start mb-4">
+                        <i class="fas fa-layer-group text-2xl text-primary/40"></i>
+                        <span class="px-3 py-1 bg-primary/10 rounded-full text-[9px] font-black text-primary uppercase">Lifetime</span>
                     </div>
-                    <i class="fas fa-layer-group text-4xl text-white/5"></i>
+                    <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Total Chapters Read</p>
+                    <h4 class="text-5xl font-black font-display text-white">${total.toLocaleString()}</h4>
                 </div>
-                <div class="glass-card rounded-3xl p-6 border-l border-white/5 flex items-center justify-between">
-                    <div>
-                        <p class="text-[10px] text-pink-400/80 font-bold uppercase tracking-widest mb-1">Chapters Read (This Week)</p>
-                        <h4 class="text-4xl font-black font-display text-pink-500">${week.toLocaleString()}</h4>
+                
+                <div class="glass-card rounded-[2rem] p-8 border-l-4 border-pink-500 transition-all hover:translate-x-1">
+                    <div class="flex justify-between items-start mb-4">
+                        <i class="fas fa-fire text-2xl text-pink-500/40 animate-bounce"></i>
+                        <span class="px-3 py-1 bg-pink-500/10 rounded-full text-[9px] font-black text-pink-500 uppercase">Streak</span>
                     </div>
-                    <i class="fas fa-fire text-4xl text-pink-500/10"></i>
+                    <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Chapters This Week</p>
+                    <h4 class="text-5xl font-black font-display text-pink-500">${week.toLocaleString()}</h4>
                 </div>
             </div>
         </div>
         
-        <div class="mt-8 text-center text-[10px] font-bold text-gray-600 uppercase tracking-widest">
-            More achievements arriving in future updates! Keep reading!
+        <div class="mt-12 glass-card rounded-2xl p-6 text-center border-white/5">
+            <p class="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center justify-center gap-3">
+                <i class="fas fa-info-circle text-primary"></i>
+                More achievements and personalized recommendations based on your stats are coming soon!
+            </p>
         </div>
     `;
 };
