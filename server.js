@@ -534,35 +534,53 @@ app.get('/api/proxy', async (req, res) => {
 
         const imageUrlLower = imageUrl.toLowerCase();
         
-        // SpeedManga sources (including various CDNs like imgez.org) 
-        // usually work best with the primary site as referer.
+        // Custom Referer Rules
         if (imageUrlLower.includes('imgez.org') || imageUrlLower.includes('speed-manga.net')) {
             referer = 'https://speed-manga.net/';
         } else if (imageUrlLower.includes('1668manga.com') || imageUrlLower.includes('168toon.com')) {
-            referer = 'https://1668manga.com/';
+            // For 168toon, try its own domain first
+            referer = imageUrlLower.includes('img.168toon.com') ? 'https://img.168toon.com/' : 'https://1668manga.com/';
         }
 
-        const response = await got(imageUrl, {
+        const options = {
             headers: {
                 'referer': referer,
                 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-                'connection': 'keep-alive'
+                'accept-language': 'en-US,en;q=0.9',
+                'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': '"Windows"',
+                'sec-fetch-dest': 'image',
+                'sec-fetch-mode': 'no-cors',
+                'sec-fetch-site': 'cross-site',
             },
-            timeout: { request: 15000 },
+            timeout: { request: 20000 },
             followRedirect: true,
-            maxRedirects: 10,
             retry: { limit: 2 },
             responseType: 'buffer',
-            https: { rejectUnauthorized: false } // ป้องกันปัญหา Cert ของบางเว็บบรรยายมังงะ
-        });
+            https: { rejectUnauthorized: false }
+        };
 
-        // ส่ง Headers ที่จำเป็นกลับไปให้ Browser
+        let response;
+        try {
+            const gotScraping = await getGotScraping();
+            response = await gotScraping(imageUrl, options);
+        } catch (innerErr) {
+            if (innerErr.response?.statusCode === 403 || innerErr.response?.statusCode === 401 || innerErr.response?.statusCode === 1011) {
+                // Secondary fallback: Try with NO referer
+                delete options.headers.referer;
+                options.headers['sec-fetch-site'] = 'cross-site';
+                const gotScraping = await getGotScraping();
+                response = await gotScraping(imageUrl, options);
+            } else {
+                throw innerErr;
+            }
+        }
+
         res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
         res.setHeader('Cache-Control', 'public, max-age=86400');
-        res.setHeader('Access-Control-Allow-Origin', '*'); // รองรับ CORS
-        res.setHeader('X-Proxy-By', 'SpeedManga-Engine');
-
+        res.setHeader('Access-Control-Allow-Origin', '*');
         res.send(response.body);
     } catch (err) {
         console.error(`[PROXY ERROR] Failure for ${imageUrl}: ${err.message}`);
