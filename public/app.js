@@ -966,7 +966,11 @@ async function renderReader(url, title) {
                 ondblclick="toggleImageZoom(this)"
                 onload="this.classList.remove('opacity-0')"
                 loading="${i < 4 ? 'eager' : 'lazy'}"
-                onerror="this.style.display='none'">`).join('');
+                onerror="this.style.display='none'">`).join('') + `
+            <!-- Bottom Immersive Trigger -->
+            <div onclick="handleImageClick(event, true)" class="w-full h-20 mb-12 flex items-center justify-center text-[9px] font-black tracking-[0.8em] text-white/5 uppercase hover:text-white/20 transition-all border-y border-white/5 cursor-pointer">
+                <i class="fas fa-eye-slash mr-4"></i> Toggle UI <i class="fas fa-eye-slash ml-4"></i>
+            </div>`;
 
         // Apply reader settings and populate selector
         applyPersistedReaderSettings();
@@ -1055,28 +1059,38 @@ function onReaderScroll() {
 
 function handleImageClick(e, isImmersiveTrigger = false) {
     const readerView = document.getElementById('reader-view');
-    const y = e.clientY;
-    const h = window.innerHeight;
-    
-    // Zen Mode Toggle (Middle 40% of screen OR Immersive Trigger text clicked)
-    if (isImmersiveTrigger || (y > h * 0.3 && y < h * 0.7)) {
-        const top = document.getElementById('reader-topbar');
-        const floats = document.getElementById('reader-floats');
-        const pbar = document.getElementById('r-progress-bar')?.parentElement;
+    const top = document.getElementById('reader-topbar');
+    const floats = document.getElementById('reader-floats');
+    const pbar = document.getElementById('r-progress-bar')?.parentElement;
+    const settings = document.getElementById('reader-settings');
+
+    // Smart Auto-Hide: Close settings if open
+    if (settings && !settings.classList.contains('hidden')) {
+        toggleReaderSettings();
+    }
+
+    if (isImmersiveTrigger) {
+        // Toggle Zones (บนสุด / ล่างสุด): เปิด/ปิดเมนู UI โดยไม่เลื่อนจอ
         [top, floats, pbar].forEach(el => {
             if (el) el.classList.toggle('ui-hidden');
         });
-        const settings = document.getElementById('reader-settings');
-        if (settings && !settings.classList.contains('hidden')) {
-            toggleReaderSettings();
-        }
         return;
     }
 
-    // Smart Scroll
+    // Click-to-Scroll (แตะรูปภาพมังงะ): ซ่อนเมนู (UI)
+    [top, floats, pbar].forEach(el => {
+        if (el) el.classList.add('ui-hidden');
+    });
+
+    // เลื่อนหน้าจอลงให้อัตโนมัติ (ประมาณ 80%)
+    const y = e.clientY;
+    const h = window.innerHeight;
     if (readerView) {
-        if (y <= h * 0.3) readerView.scrollBy({ top: -window.innerHeight * 0.8, behavior: 'smooth' });
-        else readerView.scrollBy({ top: window.innerHeight * 0.8, behavior: 'smooth' });
+        if (y <= h * 0.25) {
+            readerView.scrollBy({ top: -h * 0.8, behavior: 'smooth' });
+        } else {
+            readerView.scrollBy({ top: h * 0.8, behavior: 'smooth' });
+        }
     }
 }
 
