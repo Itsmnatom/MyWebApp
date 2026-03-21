@@ -907,15 +907,13 @@ async function renderReader(url, title) {
     if (counter) counter.classList.add('hidden');
     readerState.currentNormUrl = normalizeChapterUrl(url);
 
-    container.innerHTML = `<div class="py-40 flex flex-col items-center gap-6 animate-fade-in-up w-full">
-        <div class="w-20 h-20 rounded-3xl glass-card flex items-center justify-center border-primary/30 shadow-[0_0_30px_rgba(255,69,0,0.2)]">
-            <i class="fas fa-layer-group fa-spin text-primary text-3xl"></i>
+    container.innerHTML = `<div class="flex flex-col items-center justify-center pt-[30vh] pb-40 opacity-60 animate-fade-in-up">
+        <div class="w-32 h-[2px] bg-dark-800 rounded-full overflow-hidden shadow-[0_0_10px_rgba(255,69,0,0.2)]">
+            <div class="h-full bg-primary w-[30%] rounded-full shadow-[0_0_15px_rgba(255,69,0,1)]" style="animation: bounce-slide 1.5s infinite ease-in-out;"></div>
         </div>
-        <div class="text-center">
-            <h3 class="text-white font-black font-display tracking-widest uppercase mb-2">Decrypting Pages</h3>
-            <p class="text-xs text-gray-500 font-bold tracking-widest uppercase">Connecting to relay...</p>
-        </div>
-    </div>`;
+        <p class="text-[9px] font-black tracking-[0.4em] uppercase text-primary mt-6">Loading Pages</p>
+    </div>
+    <style>@keyframes bounce-slide { 0% { transform: translateX(-100%); width: 30%; } 50% { width: 50%; } 100% { transform: translateX(350%); width: 30%; } }</style>`;
 
     try {
         const controller = new AbortController();
